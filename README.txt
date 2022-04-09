@@ -1,0 +1,1 @@
+This is a UVPin based tweaker/jiggle joint creator tool, designed to work with matrix constraints and be games-compatible.
