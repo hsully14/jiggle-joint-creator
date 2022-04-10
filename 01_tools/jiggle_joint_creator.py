@@ -25,7 +25,7 @@ import os
 #             -ability to create multiple joints at once, and mirror setup
 #             -ability to use selected verts instead of reference locator 
 #             -more user control on control shape choice and sizing
-#              -shelf usage is broken, but menu works
+#             -shelf usage is broken, but menu works
 #
 #--------------------------------------------------------------------------------#
 
