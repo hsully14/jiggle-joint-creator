@@ -164,11 +164,80 @@ def duplicate_selected_faces():
     # clear history on duplicate
     mc.delete(duped_object, constructionHistory=True)
 
+    # TODO: hide original object and isolate new object as part of tool for easy viewing?
+
     return selected_object, duped_object
 
 
+def get_selected_verts():
+    """Grab selected verts in an ordered selection list
+
+    Returns:
+        verts: list of selected verts
+    """
+    verts = mc.ls(orderedSelection=True)
+
+    return verts
+
+
 def clear_selection():
+    """Clears selection :)
+    """
     mc.select(clear=True)
+
+
+def create_locs_on_verts(base_geometry):
+    """Creates locators on selected verts on given base geometry object
+
+    Returns:
+        locs (list): list of duplicated locators aligned to verts
+    """
+    # FIXME: save vertex selection data as part of class variable, something accessible
+    # TODO: decide on verts/vert or vtx/vt syntax
+
+    verts = get_selected_verts()
+    locs = []
+
+    for i, vert in enumerate(verts):
+        loc = mc.spaceLocator(name='loc_{0}_{1}'.format(base_geometry, i))
+        mc.xform(loc,
+                 worldSpace=True,
+                 translation=mc.xform(vert, query=True, worldSpace=True, translation=True))
+
+        locs.append(loc)
+
+    for loc in locs:
+        # align locator to nearest normal
+        constraint = mc.normalConstraint(base_geometry, loc, aimVector=(1, 0, 0), worldUpType=0)
+        mc.delete(constraint)
+    
+    return locs
+
+
+def get_vertex_uvs():
+    """Gets UV coordinates of selected vertex
+
+    Returns:
+        uv_coords (dict): dictionary of selected verts and associated UV coordinates
+    """
+    #FIXME: need unified reference variable for this
+    verts = get_selected_verts()
+
+    uv_coords = {}
+
+    for vert in verts:
+        mc.select(vert)
+        mc.ConvertSelectionToUVs()
+        uv_values = mc.polyEditUV(query=True)
+        uv_coords[vert] = uv_values
+
+    return uv_coords
+
+# how to mirror this setup across the object?
+
+
+
+
 
 
 # def get_vtx_transforms(vtx=[]):
@@ -185,10 +254,6 @@ def clear_selection():
 #         vtx_transforms.append(point_position)
 
 #     # want to select verts and get position and normal direction 
-
-
-
-
 
 
 # def flatten_selection_list():
@@ -270,43 +335,3 @@ def clear_selection():
 # end = time()
 # # 3.189 for 40k locators
 
-
-
-def create_locs_on_verts():
-
-    # FIXME: save vertex selection data as part of class variable, something accessible
-    # TODO: decide on verts/vert or vtx/vt syntax
-
-    verts = mc.ls(os=True)
-    reference_loc = 'locator1'
-    base_geometry = 'pSphere1'
-    locs = []
-
-    for i, vert in enumerate(verts):
-        # TODO: fix this stupid naming
-        dup = mc.duplicate(reference_loc, name='%s_%s' %(base_geometry, i))[0]
-        mc.xform(dup, ws=True, t=mc.xform(vert, q=True, ws=True, t=True))
-
-        locs.append(dup)
-
-    for loc in locs:
-        constraint = mc.normalConstraint(base_geometry, loc, aimVector=(1, 0, 0), worldUpType=0)
-        mc.delete(constraint)
-
-
-def get_vertex_uvs():
-
-    #FIXME: need unified reference variable for this
-    verts = mc.ls(os=True)
-
-    uv_coords = {}
-
-    for vert in verts:
-        mc.select(vert)
-        mc.ConvertSelectionToUVs()
-        uv_values = mc.polyEditUV(query=True)
-        uv_coords[vert] = uv_values
-
-    return uv_coords
-
-# how to mirror this setup across the object?
