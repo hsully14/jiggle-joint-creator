@@ -138,4 +138,3 @@ def set_side_color(control_name, side):
     # unzip RGB tuple, side color dict
     for channel, color in zip(RGB, SIDE_COLORS[side]):
         mc.setAttr(control_shape + '.overrideColor%s' % channel, color)
-

@@ -1,5 +1,6 @@
 import maya.cmds as mc
-
+import maya.api.OpenMaya as om
+import pymel.core as pm
 
 def rename_deformers(objects=[]):
     """_summary_
@@ -166,14 +167,146 @@ def duplicate_selected_faces():
     return selected_object, duped_object
 
 
-def get_vtx_transform(vtx=[]):
-    """_summary_
+def clear_selection():
+    mc.select(clear=True)
 
-    Args:
-        vtx (list, optional): _description_. Defaults to [].
-    """
-    pass
 
-    point_position = mc.xform('pCylinder1.vtx[28]', q=True, objectSpace=True, t=True)
+# def get_vtx_transforms(vtx=[]):
+#     """_summary_
 
-# want to select verts and get position and normal direction 
+#     Args:
+#         vtx (list, optional): _description_. Defaults to [].
+#     """
+
+#     vtx_transforms = []
+
+#     for vt in vtx:
+#         point_position = mc.xform(vt, query=True, objectSpace=True, translation=True)
+#         vtx_transforms.append(point_position)
+
+#     # want to select verts and get position and normal direction 
+
+
+
+
+
+
+# def flatten_selection_list():
+#   """
+#   save current selection list flattened as tuple
+#   """
+#   s = mc.ls(sl=True, flatten=True)
+#   s = tuple(i for i in s) #type:ignore
+#   return s
+
+# # NOTE: Various methods are available to query an MObject's type. If you are
+# # unsure of the type of an MObject, use the apiType() method to get the
+# # MObject's type. The return value will be a type in MFn::Type. If you want to
+# # know if an MObject is compatible with a specific function set, pass the
+# # function set type to the hasFn() method.
+
+# tsphere = mc.polySphere(sx=30, sy=30, radius=30)
+# mc.select(tsphere)
+# selection = om.MGlobal.getActiveSelectionList()
+
+# # getting the 0 idx of selection list get the dagpath and mobject handle
+# tdag, tsphere_mobj = selection.getComponent(0) #type:ignore (mdagpath, mobject)
+
+# mfn_sphere = om.MFnMesh(tdag)
+# # NOTE: verify the sphere1 tsphere is has the function set applied to it
+# # print(mfn_sphere.fullPathName())
+
+# # world space
+# ws = om.MSpace.kWorld
+
+# # fn getPoints returns a MPointArray of world positions
+# sphere_vtxs_ws = mfn_sphere.getPoints(ws)
+
+# # fn getNormals() returns a MFloatVectorArray
+# sphere_normals_ws = mfn_sphere.getNormals(ws)
+
+# YVector = om.MVector(0,1,0)
+
+# mfn_xform = om.MFnTransform(tdag)
+
+# # create an array of mobject references to locators
+# loc_mobjs = om.MObjectArray()
+# loc_mobjs.setLength(len(sphere_vtxs_ws))
+
+# # create an array of dagpaths to locators
+# loc_dags = om.MDagPathArray()
+
+# # clear selection
+# clear_select()
+# # create the locators aggreating the selection add=True
+# for i in range(len(sphere_vtxs_ws)):
+#   loc = mc.spaceLocator()
+#   mc.select(loc, add=True)
+#   loc_sl = om.MGlobal.getActiveSelectionList()
+#   ldag, lmobj = loc_sl.getComponent(0)
+#   loc_dags.append(ldag)
+#   loc_mobjs.append(lmobj)
+#   clear_select()
+
+
+# start = time()
+# for i in range(len(sphere_normals_ws)):
+#   # ensure its a unit vector
+#   normal = sphere_normals_ws[i].normalize()
+#   n = om.MVector(normal.x, normal.y, normal.z)
+#   quaternion = om.MQuaternion(YVector, n, 1.0)
+#   offsetvector = om.MVector(sphere_vtxs_ws[i].x, sphere_vtxs_ws[i].y,
+#                             sphere_vtxs_ws[i].z)
+#   locMobj = loc_mobjs[i]
+#   locdag = loc_dags[i]
+#   # initalize a transform function set on the locator dagpath
+#   locxform = om.MFnTransform(locdag)
+#   # rotate that locator by the quaternoin
+#   locxform.rotateBy(quaternion, ws)
+#   # offset vector by world position
+#   locxform.translateBy(offsetvector, ws)
+#   # offset vector by unit normal of vertex
+#   #locxform.translateBy(n, ws)
+# end = time()
+# # 3.189 for 40k locators
+
+
+
+def create_locs_on_verts():
+
+    # FIXME: save vertex selection data as part of class variable, something accessible
+    # TODO: decide on verts/vert or vtx/vt syntax
+
+    verts = mc.ls(os=True)
+    reference_loc = 'locator1'
+    base_geometry = 'pSphere1'
+    locs = []
+
+    for i, vert in enumerate(verts):
+        # TODO: fix this stupid naming
+        dup = mc.duplicate(reference_loc, name='%s_%s' %(base_geometry, i))[0]
+        mc.xform(dup, ws=True, t=mc.xform(vert, q=True, ws=True, t=True))
+
+        locs.append(dup)
+
+    for loc in locs:
+        constraint = mc.normalConstraint(base_geometry, loc, aimVector=(1, 0, 0), worldUpType=0)
+        mc.delete(constraint)
+
+
+def get_vertex_uvs():
+
+    #FIXME: need unified reference variable for this
+    verts = mc.ls(os=True)
+
+    uv_coords = {}
+
+    for vert in verts:
+        mc.select(vert)
+        mc.ConvertSelectionToUVs()
+        uv_values = mc.polyEditUV(query=True)
+        uv_coords[vert] = uv_values
+
+    return uv_coords
+
+# how to mirror this setup across the object?
