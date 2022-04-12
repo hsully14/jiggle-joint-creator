@@ -165,6 +165,7 @@ def duplicate_selected_faces():
     mc.delete(duped_object, constructionHistory=True)
 
     # TODO: hide original object and isolate new object as part of tool for easy viewing?
+    mc.hide(selected_object)
 
     return selected_object, duped_object
 
