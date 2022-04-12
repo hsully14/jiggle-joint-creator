@@ -191,13 +191,15 @@ def create_locs_on_verts(base_geometry):
     """Creates locators on selected verts on given base geometry object
 
     Returns:
-        locs (list): list of duplicated locators aligned to verts
+        locs (list): list of duplicated locators
+        vert_loc_pairs (dict): dict of locs and matching vert pairs
     """
-    # FIXME: save vertex selection data as part of class variable, something accessible
-    # TODO: decide on verts/vert or vtx/vt syntax
-
+    # FIXME: save vertex selection data as part of class variable, something accessible? 
+   
     verts = get_selected_verts()
     locs = []
+    vert_loc_pairs = {}
+
 
     for i, vert in enumerate(verts):
         loc = mc.spaceLocator(name='loc_{0}_{1}'.format(base_geometry, i))
@@ -206,13 +208,14 @@ def create_locs_on_verts(base_geometry):
                  translation=mc.xform(vert, query=True, worldSpace=True, translation=True))
 
         locs.append(loc)
+        vert_loc_pairs[vert] = loc
 
     for loc in locs:
         # align locator to nearest normal
         constraint = mc.normalConstraint(base_geometry, loc, aimVector=(1, 0, 0), worldUpType=0)
         mc.delete(constraint)
     
-    return locs
+    return locs, vert_loc_pairs
 
 
 def get_vertex_uvs():

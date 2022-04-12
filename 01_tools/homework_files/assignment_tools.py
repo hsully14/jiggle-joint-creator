@@ -32,7 +32,7 @@ Let's explore and advance in our use of the script editor:
         * VIM
         * ...
 
-    -I've used PyCharm before, will stick with VSCode to stay in line with company worfklows
+    # I've used PyCharm before, will stick with VSCode to stay in line with company worfklows
 
     b) Check out the settings and plugins and add these or more:
         * user settings
@@ -41,7 +41,7 @@ Let's explore and advance in our use of the script editor:
         * color theme
         * ...
 
-    -Added new color theme, editor ruler line, and PEP8 linting with pycodestyle to VSCode
+    # Added new color theme, editor ruler line, and PEP8 linting with pycodestyle to VSCode
 
     c) USE a few new shortcuts
 
@@ -50,17 +50,16 @@ Let's explore and advance in our use of the script editor:
 
     d) ADD one helpful snippet and use it through out the masterclass
 
-    TODO: this
+    "Block Comment": {
+	"prefix": "block",
+	"body": ["$BLOCK_COMMENT_START",
+			"${1:foo}",
+			"$BLOCK_COMMENT_END"],
+	"description": "Create simple block comment"
+}
 
 
 NOTE: Nothing to upload in this task.
-
-
-
-
-
-
-
 
 
 #******************************************************************************
@@ -96,16 +95,6 @@ NOTE: Nothing to upload in this task.
     BONUS: Solve the tasks without looking them up.
 
 
-
-
-
-
-
-
-
-
-
-
 2) CREATE a custom .bat or .sh that does the following:
 
     a) STARTS a DCC of your choice (Maya, Nuke, Houdini, ...)
@@ -120,12 +109,7 @@ NOTE: Nothing to upload in this task.
     d) Make sure everything works as intended
 
 
-    # I have questions for this part, need to continue researching 
-
-
-
-    #TODO: finish this
-
+    # Check!
 
 
 #******************************************************************************
@@ -148,14 +132,6 @@ which also serves as a code and documentation example throughout this masterclas
     https://github.com/alexanderrichtertd/plex/wiki
 
     # Check!
-
-
-
-
-
-
-
-
 
 
 2) CREATE an assignment repository
@@ -211,16 +187,7 @@ Use the git shell for the following tasks:
 
     i) SHARE your repository with our #python_advanced Discord community (if not private).
 
-    #TODO: this
-
-
-
-
-
-
-
-
-
+    # Check!
 
 3) DID YOU GET THAT?
 -----------------------------------------------------------
