@@ -237,7 +237,7 @@ def get_vertex_uvs():
 
     return uv_coords
 
-# how to mirror this setup across the object?
+# how to mirror this setup across the object? symmetry mode turned on and selected verts from there?
 
 
 
