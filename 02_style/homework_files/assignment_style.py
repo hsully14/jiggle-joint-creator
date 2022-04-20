@@ -24,7 +24,7 @@ Make coding standards your baseline and advance from there.
 Update the style of this module: arload.py
 Use what you have learned.
 
-
+   # Check!
 
 
 
@@ -35,7 +35,8 @@ Update the style of this module: pylogger.py
 Focus on readability of the function without the need to understand every part.
 It should be easy for everyone to pick it up and modify it.
 
-
+   # In progress - trying to understand final while loop structure
+   # FIXME: finish this section
 
 
 
@@ -44,9 +45,15 @@ It should be easy for everyone to pick it up and modify it.
 #************************************************************************************
 a) Update compress_ifs.py in terms of the 'if' uses and style rules.
 
+   # created colors dictionary
+   # compressed try:except lines into 1 to reduce redundancy and printed error msg
+   # renamed variables to snake case
+   # Check!
+
 b) Find a module in your application with a lot of ifs, loops or function calls.
    See if you can update it in a way that needs significantly less lines of code.
 
+   # TODO:
 TIP: Calls or ifs can often be replaced with loops.
 
 
@@ -74,6 +81,8 @@ Does it look and feel better and easier to read?
 #************************************************************************************
 Write an advanced documentation on the remote git Wiki for your application.
 e.g. https://github.com/alexanderrichtertd/plex/wiki
+
+   # TODO:
 
 Include two documentation pages in your Wiki:
 

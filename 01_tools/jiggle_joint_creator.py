@@ -431,16 +431,14 @@ def init_jiggle_joint(name, base_geometry, source_loc=[], side='R'):
 
     Parameters:
         name (string): jiggle control name, ie "Spine"
-        sourceLoc (string): reference locator or object for jiggle plane transforms
+        base_geometry (string): duplicated geo used as driver mesh
+        source_loc (list): reference locators for joint positioning
         side (string): side of the body the controller is located, L, R, or C
         
     Returns:
-        geo
-        jntMultNode
+        
 
     """
-
-   
 
     # TODO: rename base geometry to updated naming convention
     # geo_name = 'H_{}_{}_Jiggle_Proxy'.format(side, control_name)
@@ -451,9 +449,9 @@ def init_jiggle_joint(name, base_geometry, source_loc=[], side='R'):
     pin_name = 'F_{}_{}_UVPin'.format(side, name)
 
     # make uvPin node, set temp axes
-    pin = mc.createNode('uvPin', name=pin_name)
-    mc.setAttr('{}.normalAxis'.format(pin), 0)
-    mc.setAttr('{}.tangentAxis'.format(pin), 5)
+    uv_pin = mc.createNode('uvPin', name=pin_name)
+    mc.setAttr('{}.normalAxis'.format(uv_pin), 0)
+    mc.setAttr('{}.tangentAxis'.format(uv_pin), 5)
     
      # get info on base geometry
     base_geometry_shape = mc.listRelatives(base_geometry)[0]
@@ -461,8 +459,8 @@ def init_jiggle_joint(name, base_geometry, source_loc=[], side='R'):
 
     # connect pin to base_geometry 
     # TODO: convert this to function? get base geo info 
-    mc.connectAttr(shape_orig[0], '{}.originalGeometry'.format(pin))
-    mc.connectAttr('{}.worldMesh[0]'.format(base_geometry_shape), '{}.deformedGeometry'.format(pin))
+    mc.connectAttr(shape_orig[0], '{}.originalGeometry'.format(uv_pin))
+    mc.connectAttr('{}.worldMesh[0]'.format(base_geometry_shape), '{}.deformedGeometry'.format(uv_pin))
 
     for index, loc in enumerate(source_loc):
         # print(index, loc)
@@ -486,8 +484,8 @@ def init_jiggle_joint(name, base_geometry, source_loc=[], side='R'):
         mc.addAttr(controller, attributeType='float', defaultValue=.5, keyable=True, minValue=0, maxValue=1, longName='coordinateV')
 
         # make connections from controller attrs to UVpin based on index count of controller
-        mc.connectAttr('{}.coordinateU'.format(controller), '{}.coordinate[{}].coordinateU'.format(pin, index))
-        mc.connectAttr('{}.coordinateV'.format(controller), '{}.coordinate[{}].coordinateV'.format(pin, index))
+        mc.connectAttr('{}.coordinateU'.format(controller), '{}.coordinate[{}].coordinateU'.format(uv_pin, index))
+        mc.connectAttr('{}.coordinateV'.format(controller), '{}.coordinate[{}].coordinateV'.format(uv_pin, index))
 
         # connect UVpin to controller offset parent for follow
         # TODO: figure out where things should be placed for this connection to happen
