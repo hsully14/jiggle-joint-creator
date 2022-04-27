@@ -166,9 +166,11 @@ def duplicate_selected_faces():
     delete_faces = mc.ls(sl=True)
     mc.delete(delete_faces)
 
-    # clear history on duplicate
+    # freeze transforms and clear history on duplicate
+    mc.makeIdentity(duped_object, apply=True)
     mc.delete(duped_object, constructionHistory=True)
 
+    # hide original object for visual clarity
     mc.hide(selected_object)
 
     return selected_object, duped_object
@@ -196,20 +198,20 @@ def create_locs_on_verts(base_geometry):
         locs (list): list of duplicated locators
         vert_loc_pairs (dict): dict of locs and matching vert pairs
     """
-    # FIXME: save vertex selection data as part of class variable, something accessible?
+    # FIXME: save vertex selection data as part of class variable, something more accessible?
     verts = get_selected_verts()
     locs = []
     vert_loc_pairs = {}
 
-    for i, vert in enumerate(verts):
-        index = ('{:02d}'.format(i))
-        loc = mc.spaceLocator(name='loc_{0}_{1}'.format(base_geometry, index))
+    for index, vert in enumerate(verts):
+        # format index to 2 digit number and add 1 for prettier iteration counting
+        naming_index = '{0:0=2d}'.format(index+1)
+        loc = mc.spaceLocator(name='loc_{0}_{1}'.format(base_geometry, naming_index))
         vert_location = mc.xform(vert, query=True, worldSpace=True, translation=True)
 
-        mc.xform(loc,
-                 worldSpace=True,
-                 translation=vert_location)
+        mc.xform(loc, worldSpace=True, translation=vert_location)
 
+        # collect data
         locs.append(loc)
         vert_loc_pairs[vert] = loc
 
@@ -221,24 +223,17 @@ def create_locs_on_verts(base_geometry):
     return locs, vert_loc_pairs
 
 
-def get_vertex_uvs():
-    """Gets UV coordinates of selected vertex
-
-    Returns:
-        uv_coords (dict): dictionary of selected verts and associated UV coordinates
-    """
+def get_vertex_uvs(vert):
     #FIXME: need unified reference variable for this
-    verts = get_selected_verts()
 
-    uv_coords = {}
+    mc.select(vert)
+    mc.ConvertSelectionToUVs()
+    uv_values = mc.polyEditUV(query=True)
 
-    for vert in verts:
-        mc.select(vert)
-        mc.ConvertSelectionToUVs()
-        uv_values = mc.polyEditUV(query=True)
-        uv_coords[vert] = uv_values
+    return uv_values
 
-    return uv_coords
+
+
 
 # how to mirror this setup across the object? symmetry mode turned on and selected verts from there?
 

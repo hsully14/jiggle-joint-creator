@@ -1,12 +1,10 @@
+import os
 
 import maya.cmds as mc
 import pymel.core as pm
 
-import os
-
-import control_curve_utils as ccu
 import mesh_utils as mu
-
+import control_curve_utils as ccu
 
 #--------------------------------------------------------------------------------#
 #            
@@ -426,8 +424,14 @@ def test():
 
 
 
-def init_jiggle_joint(name, base_geometry, source_loc=[], side='R'):
-    """Build jiggle plane, controller, and joint, based on input locator. Choose name and parent module.
+# ************************************************************************************
+# CLEANING UP THIS MODULE - NEW STUFF STARTS BELOW
+# ************************************************************************************
+
+
+
+def init_jiggle_joint(name, base_geometry, source_verts=[], side='None'):
+    """Build jiggle plane, controller, and joint, based on input locators. Input name and parent module.
 
     Parameters:
         name (string): jiggle control name, ie "Spine"
@@ -437,23 +441,17 @@ def init_jiggle_joint(name, base_geometry, source_loc=[], side='R'):
         
     Returns:
         
-
     """
 
-    # TODO: rename base geometry to updated naming convention
-    # geo_name = 'H_{}_{}_Jiggle_Proxy'.format(side, control_name)
-
-    
-    # TODO: confirm this naming 
+    # TODO: confirm this naming convention, naming is unclear with 'C' center naming - J_C_, C_C_ 
     # TODO: convert UVpin creation to function?
     pin_name = 'F_{}_{}_UVPin'.format(side, name)
-
     # make uvPin node, set temp axes
     uv_pin = mc.createNode('uvPin', name=pin_name)
     mc.setAttr('{}.normalAxis'.format(uv_pin), 0)
     mc.setAttr('{}.tangentAxis'.format(uv_pin), 5)
     
-     # get info on base geometry
+    # get info from base_geometry
     base_geometry_shape = mc.listRelatives(base_geometry)[0]
     shape_orig = mc.deformableShape(base_geometry, createOriginalGeometry=True)
 
@@ -462,244 +460,94 @@ def init_jiggle_joint(name, base_geometry, source_loc=[], side='R'):
     mc.connectAttr(shape_orig[0], '{}.originalGeometry'.format(uv_pin))
     mc.connectAttr('{}.worldMesh[0]'.format(base_geometry_shape), '{}.deformedGeometry'.format(uv_pin))
 
-    for index, loc in enumerate(source_loc):
-        # print(index, loc)
 
-        # format index to 2 digit number and add 1 for prettier iteration counting
+    ### get UV coordinate of points first, then input point UV to coordinate
+    ### assign UV coord data to UV info on controllers, then connect to UV pin attr
+    ### then connect offset parent matrix data to controller, with existing UV info
+
+    for index, vert in enumerate(source_verts):
+        print(index, vert)
+
+        # format index to 2 digit number and add 1 for nicer object naming
         naming_index = '{0:0=2d}'.format(index+1)
-
         control_name = 'C_{}_{}_Jiggle_{}'.format(side, name, naming_index)
-        joint_name = 'J_{}_{}_Jiggle_{}'.format(side, name, naming_index)
+        joint_name   = 'J_{}_{}_Jiggle_{}'.format(side, name, naming_index)
 
-        # create joint
-        mu.clear_selection()
-        joint = mc.joint(name=joint_name)
-
-        # create jiggle controller, apply color, add attrs to store UV coords
-        # TODO: expose this axis, size, control shape to a UI function
-        # FIXME: naming is unclear with 'C' center naming - J_C_, C_C_ 
+        # create jiggle controller based on selected shape #TODO: expose shape, axis, size, to UI
         controller = ccu.make_control_shape('sphere', control_name=control_name, axis='x', size=2)
         ccu.set_side_color(controller, side)
-        mc.addAttr(controller, attributeType='float', defaultValue=.5, keyable=True, minValue=0, maxValue=1, longName='coordinateU')
-        mc.addAttr(controller, attributeType='float', defaultValue=.5, keyable=True, minValue=0, maxValue=1, longName='coordinateV')
+
+        vertex_uvs = mu.get_vertex_uvs(vert)
+        vertex_u = vertex_uvs[0]
+        vertex_v = vertex_uvs[1]
+
+        # create attrs to store UV coord data
+        mc.addAttr(controller, attributeType='float', defaultValue=vertex_u, keyable=True, minValue=0, maxValue=1, longName='coordinateU')
+        mc.addAttr(controller, attributeType='float', defaultValue=vertex_v, keyable=True, minValue=0, maxValue=1, longName='coordinateV')
 
         # make connections from controller attrs to UVpin based on index count of controller
         mc.connectAttr('{}.coordinateU'.format(controller), '{}.coordinate[{}].coordinateU'.format(uv_pin, index))
         mc.connectAttr('{}.coordinateV'.format(controller), '{}.coordinate[{}].coordinateV'.format(uv_pin, index))
 
-        # connect UVpin to controller offset parent for follow
-        # TODO: figure out where things should be placed for this connection to happen
-        # mc.connectAttr('{}.outputMatrix[0]'.format(pin), '{}.offsetParentMatrix'.format(controller))
-
-
-
-
-    # #make matrix nodes for controller to joint, named for joint
-    # jntDecompNode = mc.createNode('decomposeMatrix', n='{}_decomp'.format(joint_name))
-    # jntMultNode = mc.createNode('multMatrix', n='{}_mult'.format(joint_name))
-
-    # # make connections from controller to joint via matrices
-    # mc.connectAttr('{}.worldMatrix[0]'.format(controller), '{}.matrixIn[0]'.format(jntMultNode))
-    # mc.connectAttr('{}.matrixSum'.format(jntMultNode), '{}.inputMatrix'.format(jntDecompNode))
-    # mc.connectAttr('{}.outputTranslate'.format(jntDecompNode), '{}.translate'.format(joint))
-    # mc.connectAttr('{}.outputRotate'.format(jntDecompNode), '{}.rotate'.format(joint))   
-    # mc.connectAttr('{}.outputScale'.format(jntDecompNode), '{}.scale'.format(joint))
-
-    # # snap plane to source locator and freeze transforms
-    # mc.matchTransform(geo, source_loc)
-    # mc.makeIdentity(geo, apply=True)
-
-    # #store data
-    # JIGGLE_COMPONENTS['proxy_geo'] = geo
-    # JIGGLE_COMPONENTS['jiggle_jnt'] = joint
-    # JIGGLE_COMPONENTS['jiggle_ctrl'] = controller
-    # JIGGLE_COMPONENTS['jnt_mult_node'] = jntMultNode
-
-    # return [geo, jntMultNode]
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-def renameDeformers(objects=[]):
-    if not objects:
-        objects = mc.ls(sl=True)
-    if objects:
-        for o in objects:
-            inputs = mc.listHistory(o, il=1)
-            sc = mc.ls(inputs, typ='skinCluster')
-            if sc:
-                newSC = mc.rename(sc[0], 'skinCluster_{}'.format(o))
-                return newSC 
-
-
-def copySkinCluster(source='', dest=[], rename=False):
-    maxInfluences = 0
-    maintainMaxInfluences = False
-    if not source and not dest:
-        objects = mc.ls(sl=True)
-        if len(objects) < 2:
-            return False
-        else:
-            source = objects[0]
-            dest = objects[1:]
-    sourceHistory = mc.listHistory(source, lv=1)
-    sc = mc.ls(sourceHistory, typ='skinCluster')
-    if sc:
-        maintainMaxInfluences = mc.getAttr('{}.maintainMaxInfluences'.format(
-            sc[0]))
-        maxInfluences = mc.getAttr('{}.maxInfluences'.format(sc[0]))
-    newSCNames = []
-    for d in dest:
-        destHistory = mc.listHistory(d, lv=1)
-        oldSC = mc.ls(destHistory, typ='skinCluster')
-        if oldSC:
-            mc.delete(oldSC)
-        jnts = mc.skinCluster(sc[0], weightedInfluence=True, q=True)
-        newSC = mc.skinCluster(jnts, d, tsb=True)[0]
-        mc.setAttr('{}.maintainMaxInfluences'.format(newSC),
-                   maintainMaxInfluences)
-        mc.setAttr('{}.maxInfluences'.format(newSC), maxInfluences)
-        mc.copySkinWeights(ss=sc[0],
-                           ds=newSC,
-                           nm=True,
-                           surfaceAssociation='closestPoint')
-        if rename:
-            pass
-            newSCName = renameDeformers(objects=[d])
-        else:
-            newSCName = newSC
-        newSCNames.append(newSCName)
-    #mc.select(objects)
-    return (newSCNames) 
-
-
-def addJntsToSkin(skin_mesh, joints=[]):
-    """Add given joints into given skinCluster with locked, zeroed weights
-    
-    Parameters:
-        joint (string): name of joint to add
-        skin (string): target skin cluster 
+        # # connect UVpin to controller offset parent for follow
+        # # TODO: figure out where things should be placed for this connection to happen
+        mc.connectAttr('{}.outputMatrix[{}]'.format(uv_pin, index), '{}.offsetParentMatrix'.format(controller))
         
-    Returns:
-        
-    """
-    skin_cluster = mc.ls(mc.listHistory(skin_mesh), type='skinCluster')
+        # # create joint
+        mu.clear_selection()
+        joint = mc.joint(name=joint_name)
 
-    for joint in joints:
-        mc.skinCluster(skin_cluster, edit=True, dr=4, ps=0, ns=10, lw=True, wt=0, ai=joint)
+        # # create matrix nodes for controller to joint driving
+        joint_decomp_node = mc.createNode('decomposeMatrix', n='{}_decomp'.format(joint_name))
+        joint_mult_node = mc.createNode('multMatrix', n='{}_mult'.format(joint_name))
 
+        # # make connections from controller to joint via matrices
+        mc.connectAttr('{}.worldMatrix[0]'.format(controller), '{}.matrixIn[0]'.format(joint_mult_node))
+        mc.connectAttr('{}.matrixSum'.format(joint_mult_node), '{}.inputMatrix'.format(joint_decomp_node))
+        mc.connectAttr('{}.outputTranslate'.format(joint_decomp_node), '{}.translate'.format(joint))
+        mc.connectAttr('{}.outputRotate'.format(joint_decomp_node), '{}.rotate'.format(joint))   
+        mc.connectAttr('{}.outputScale'.format(joint_decomp_node), '{}.scale'.format(joint))
 
-def setSideColor(control, side):
-    """Set control color based on placement
-    
-    Parameters:
-        control (string): name of controller
-        side (string): side of body where controller is placed, R, L, or C
-        
-    Returns:
-        
-    """
-    #get shape node and set color overrides
-    controlShape = mc.listRelatives(control, shapes=True)[0]
-    mc.setAttr(controlShape + '.overrideEnabled', 1)
-    mc.setAttr(controlShape + '.overrideRGBColors', 1)
+    # TODO: rename base geometry to updated naming convention - either at end or at very start
+    geo_name = 'H_{}_{}_Jiggle_Proxy'.format(side, name)
+    mc.rename(base_geometry, geo_name)
 
-    # creating zippable tuple 
-    rgb = ("R", "G", "B")
+        # #store data
+        # JIGGLE_COMPONENTS['proxy_geo'] = geo
+        # JIGGLE_COMPONENTS['jiggle_jnt'] = joint
+        # JIGGLE_COMPONENTS['jiggle_ctrl'] = controller
+        # JIGGLE_COMPONENTS['jnt_mult_node'] = joint_mult_node
 
-    #setting color template
-    colorRight = [1, 0, 0]
-    colorLeft = [0, 1, 1]
-    colorCenter = [1, 1, 0]
-
-    #evaluate side value and set colors
-    if side == 'L':
-        for channel, color in zip(rgb, colorLeft):
-            mc.setAttr(controlShape + '.overrideColor%s' % channel, color)
-    if side == 'R':
-        for channel, color in zip(rgb, colorRight):
-            mc.setAttr(controlShape + '.overrideColor%s' % channel, color)
-    if side == 'C':
-        for channel, color in zip(rgb, colorCenter):
-            mc.setAttr(controlShape + '.overrideColor%s' % channel, color)
-        
-
-def makeShape(shape, name='control', axis='y', size=.2):
-    """Make nurbs curve shapes.
-
-    """
-
-    # get orient values from aimAxis
-    if not axis in orients:
-        raise ValueError('axis must be \'x\', \'y\', or \'z\'.')
-    orient = orients.get(axis)
-    if shape == 'circle':
-        c = mc.circle(name=name, nr=orient, ch=False, r=(size * .5))[0]
-    else:
-        c = mc.curve(name=name, d=1, p=shapes[shape])
-        mc.setAttr('{}.sx'.format(c), size)
-        mc.setAttr('{}.sy'.format(c), size)
-        mc.setAttr('{}.sz'.format(c), size)
-        if orient[0]:
-            mc.setAttr('{}.rz'.format(c), 90)
-        elif orient[2]:
-            mc.setAttr('{}.rx'.format(c), 90)
-        mc.makeIdentity(c, apply=True)
-    return c
+        # return [geo, joint_mult_node]
 
 
-orients = {'x': [1, 0, 0], 'y': [0, 1, 0], 'z': [0, 0, 1]}
 
 
-shapes = {
-    'sphere': [[0.0, 0.5, 0.0], [-0.19, 0.46, 0.0], [-0.35, 0.35, 0.0],
-               [-0.46, 0.19, 0.0], [-0.5, 0.0, 0.0], [-0.46, -0.19, 0.0],
-               [-0.35, -0.35, 0.0], [-0.19, -0.46, 0.0], [0.0, -0.5, 0.0],
-               [0.19, -0.46, 0.0], [0.35, -0.35, 0.0], [0.46, -0.19, 0.0],
-               [0.5, 0.0, 0.0], [0.46, 0.19, 0.0], [0.35, 0.35, 0.0],
-               [0.19, 0.46, 0.0], [0.0, 0.5, 0.0], [0.0, 0.46, 0.19],
-               [0.0, 0.35, 0.35], [0.0, 0.19, 0.46], [0.0, 0.0, 0.5],
-               [0.19, 0.0, 0.46], [0.35, 0.0, 0.35], [0.46, 0.0, 0.19],
-               [0.5, 0.0, 0.0], [0.46, 0.0, -0.19], [0.35, 0.0, -0.35],
-               [0.19, 0.0, -0.46], [0.0, 0.0, -0.5], [-0.19, 0.0, -0.46],
-               [-0.35, 0.0, -0.35], [-0.46, 0.0, -0.19], [-0.5, 0.0, 0.0],
-               [-0.46, 0.0, 0.19], [-0.35, 0.0, 0.35], [-0.19, 0.0, 0.46],
-               [0.0, 0.0, 0.5], [0.0, -0.19, 0.46], [0.0, -0.35, 0.35],
-               [0.0, -0.46, 0.19], [0.0, -0.5, 0.0], [0.0, -0.46, -0.19],
-               [0.0, -0.35, -0.35], [0.0, -0.19, -0.46], [0.0, 0.0, -0.5],
-               [0.0, 0.19, -0.46], [0.0, 0.35, -0.35], [0.0, 0.46, -0.19],
-               [0.0, 0.5, 0.0]]
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
