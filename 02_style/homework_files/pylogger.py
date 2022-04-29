@@ -35,5 +35,5 @@ def findCaller(self):
     return rv
 
 # How can we make this code better?
-# Question - I see the example solution in the book. I'm unclear on what rv is doing and why we need to edit it 
-# as seen in the example. 
+# Question - I see the example solution in the book. I'm unclear on what rv is doing
+# and why we need to edit it as seen in the example.

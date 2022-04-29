@@ -8,6 +8,8 @@ import maya.cmds as mc
 
 # COMMENT --------------------------------------------------
 # Not optimal
+
+
 def set_color(ctrl_list=None, ctrl_color=None):
 
     colors = {1 : 4,

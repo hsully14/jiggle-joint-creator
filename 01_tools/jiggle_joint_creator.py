@@ -418,17 +418,15 @@ def connectToHierarchy(jiggleJoint, parentJoint, jntMultNode, jiggleController, 
     mc.hide(proxyGeo)
 
 
-
 def test():
     print('Hello World')
-
 
 
 # ************************************************************************************
 # CLEANING UP THIS MODULE - NEW STUFF STARTS BELOW
 # ************************************************************************************
 
-
+# TODO: 4/26, implement mirroring. start work on UI to grab inputs. 
 
 def init_jiggle_joint(name, base_geometry, source_verts=[], side='None'):
     """Build jiggle plane, controller, and joint, based on input locators. Input name and parent module.
@@ -444,6 +442,8 @@ def init_jiggle_joint(name, base_geometry, source_verts=[], side='None'):
     """
 
     # TODO: confirm this naming convention, naming is unclear with 'C' center naming - J_C_, C_C_ 
+    # maybe create single variable to control naming, allow for easier updating?
+
     # TODO: convert UVpin creation to function?
     pin_name = 'F_{}_{}_UVPin'.format(side, name)
     # make uvPin node, set temp axes
@@ -460,7 +460,6 @@ def init_jiggle_joint(name, base_geometry, source_verts=[], side='None'):
     mc.connectAttr(shape_orig[0], '{}.originalGeometry'.format(uv_pin))
     mc.connectAttr('{}.worldMesh[0]'.format(base_geometry_shape), '{}.deformedGeometry'.format(uv_pin))
 
-
     ### get UV coordinate of points first, then input point UV to coordinate
     ### assign UV coord data to UV info on controllers, then connect to UV pin attr
     ### then connect offset parent matrix data to controller, with existing UV info
@@ -473,7 +472,8 @@ def init_jiggle_joint(name, base_geometry, source_verts=[], side='None'):
         control_name = 'C_{}_{}_Jiggle_{}'.format(side, name, naming_index)
         joint_name   = 'J_{}_{}_Jiggle_{}'.format(side, name, naming_index)
 
-        # create jiggle controller based on selected shape #TODO: expose shape, axis, size, to UI
+        # create jiggle controller based on selected shape 
+        # TODO: expose shape, axis, size, to UI
         controller = ccu.make_control_shape('sphere', control_name=control_name, axis='x', size=2)
         ccu.set_side_color(controller, side)
 
@@ -489,26 +489,26 @@ def init_jiggle_joint(name, base_geometry, source_verts=[], side='None'):
         mc.connectAttr('{}.coordinateU'.format(controller), '{}.coordinate[{}].coordinateU'.format(uv_pin, index))
         mc.connectAttr('{}.coordinateV'.format(controller), '{}.coordinate[{}].coordinateV'.format(uv_pin, index))
 
-        # # connect UVpin to controller offset parent for follow
-        # # TODO: figure out where things should be placed for this connection to happen
+        # connect UVpin to controller offset parent for follow
+        # TODO: figure out where things should be placed for this connection to happen
         mc.connectAttr('{}.outputMatrix[{}]'.format(uv_pin, index), '{}.offsetParentMatrix'.format(controller))
         
-        # # create joint
+        # create joint
         mu.clear_selection()
         joint = mc.joint(name=joint_name)
 
-        # # create matrix nodes for controller to joint driving
+        # TODO: create function to handle this matrix parenting?
+        # create matrix nodes for controller to joint driving
         joint_decomp_node = mc.createNode('decomposeMatrix', n='{}_decomp'.format(joint_name))
         joint_mult_node = mc.createNode('multMatrix', n='{}_mult'.format(joint_name))
 
-        # # make connections from controller to joint via matrices
+        # make connections from controller to joint via matrices
         mc.connectAttr('{}.worldMatrix[0]'.format(controller), '{}.matrixIn[0]'.format(joint_mult_node))
         mc.connectAttr('{}.matrixSum'.format(joint_mult_node), '{}.inputMatrix'.format(joint_decomp_node))
         mc.connectAttr('{}.outputTranslate'.format(joint_decomp_node), '{}.translate'.format(joint))
         mc.connectAttr('{}.outputRotate'.format(joint_decomp_node), '{}.rotate'.format(joint))   
         mc.connectAttr('{}.outputScale'.format(joint_decomp_node), '{}.scale'.format(joint))
 
-    # TODO: rename base geometry to updated naming convention - either at end or at very start
     geo_name = 'H_{}_{}_Jiggle_Proxy'.format(side, name)
     mc.rename(base_geometry, geo_name)
 

@@ -85,33 +85,35 @@ SIDE_COLORS = {
 # HELPER FUNCTIONS
 # ************************************************************************************
 
+
 def make_control_shape(shape, control_name='control', axis='y', size=1):
-   
     """Creates NURBS curve shape for animateable control
 
     Arguments:
-        shape (string): type of shape to create, from ORIENTS
+        shape : type of shape to create, from ORIENTS
         control_name (string): name of controller
         axis (string): primary aim axis
         size (integer): transform size
+
     Returns:
-        control_curve: NURBS curve transform
+        control_curve (string): NURBS curve transform 
     """
+    # TODO: expose axis, name, and size to UI later on
 
     # verify axis input and get orient values from aimAxis
     if axis not in ORIENTS:
-        #TODO: change this to a logged error message
-        raise ValueError('axis must be \'x\', \'y\', or \'z\'.')
-        
+        # TODO: change this to a logged error message
+        raise ValueError('Axis must be \'x\', \'y\', or \'z\'.')
+
     orient = ORIENTS.get(axis)
 
     if shape == 'circle':
-        control_curve = mc.circle(name=control_name, normal=orient, constructionHistory=False, radius=(size * .5))[0]
+        control_curve = mc.circle(name=control_name,
+                                  normal=orient,
+                                  constructionHistory=False,
+                                  radius=(size * .5))[0]
     else:
         control_curve = mc.curve(name=control_name, degree=1, point=SHAPES[shape])
-        # rename curve shape to match parent
-        control_curve_shape = mc.listRelatives(control_curve, shapes=True)
-        mc.rename(control_curve_shape, "{}Shape".format(control_name))
 
         mc.setAttr('{}.sx'.format(control_curve), size)
         mc.setAttr('{}.sy'.format(control_curve), size)
@@ -122,26 +124,36 @@ def make_control_shape(shape, control_name='control', axis='y', size=1):
         elif orient[2]:
             mc.setAttr('{}.rx'.format(control_curve), 90)
 
-        mc.makeIdentity(control_curve, apply=True)
+    # rename curve shape to match transform
+    control_curve_shape = mc.listRelatives(control_curve, shapes=True)
+    mc.rename(control_curve_shape, "{}Shape".format(control_name))
+
+    mc.makeIdentity(control_curve, apply=True)
 
     return control_curve
 
 
 def set_side_color(control_name, side):
-    """Set control color based on given side of rig
+    """Set control color based on given side of rig. References constants in file header.
 
     Arguments:
-        control_name (string): name of controller transform
+        control_name (string): name of controller to act on
         side (string): side of body where controller is placed: L, R, C, or None
 
-    Returns:
     """
 
-    # get shape node and set color overrides
+    # get control shape node and activate color overrides
     control_shape = mc.listRelatives(control_name, shapes=True)[0]
-    mc.setAttr(control_shape + '.overrideEnabled', 1)
-    mc.setAttr(control_shape + '.overrideRGBColors', 1)
+    mc.setAttr('{}.overrideEnabled'.format(control_shape), 1)
+    mc.setAttr('{}.overrideRGBColors'.format(control_shape), 1)
 
-    # unzip RGB tuple, side color dict
+    # unzip RGB tuple, side color dict, and apply color
     for channel, color in zip(RGB, SIDE_COLORS[side]):
-        mc.setAttr(control_shape + '.overrideColor%s' % channel, color)
+        # mc.setAttr(control_shape + '.overrideColor%s' % channel, color)
+        mc.setAttr('{}.overrideColor{}'.format(control_shape, channel), color)
+
+
+def lock_and_hide(object, lock=True, hide=True, attrs=[]):
+    '''Locks and hides given attrs on given object. Change value of lock, hide as needed'''
+    for attr in attrs:
+        mc.setAttr('{}.{}'.format(object, attr), lock=lock, keyable=hide)

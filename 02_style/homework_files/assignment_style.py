@@ -53,7 +53,7 @@ a) Update compress_ifs.py in terms of the 'if' uses and style rules.
 b) Find a module in your application with a lot of ifs, loops or function calls.
    See if you can update it in a way that needs significantly less lines of code.
 
-   # TODO:
+   
 TIP: Calls or ifs can often be replaced with loops.
 
 
@@ -82,7 +82,7 @@ Does it look and feel better and easier to read?
 Write an advanced documentation on the remote git Wiki for your application.
 e.g. https://github.com/alexanderrichtertd/plex/wiki
 
-   # TODO:
+   # WIP but on it's way!
 
 Include two documentation pages in your Wiki:
 
