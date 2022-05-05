@@ -33,26 +33,52 @@ START - long_sleeping
 
 import time
 
+from datetime import datetime
 
 #*********************************************************************
 # DECORATOR
+
+
 def print_process(func):
     def wrapper(*args, **kwargs):
-        func(arg)                  # main_function
+        # get name of function
+        function_name = func.__name__
+
+        # start timer count
+        start_time = datetime.now()
+
+        # print function running next
+        print("START: {} ----------".format(function_name))
+
+        # main function call
+        func(*args)
+
+        # count up time and finish wrapper call
+        end_time = (datetime.now() - start_time)
+        print("END {} ----------".format(end_time))
+
     return wrapper
 
 
 #*********************************************************************
 # FUNC
+
+@print_process
+def shortest_sleeping():
+    print("so sleepy")
+
+
 @print_process
 def short_sleeping(test):
     time.sleep(.1)
     print(test)
 
+
+@print_process
 def mid_sleeping():
     time.sleep(2)
 
+
+@print_process
 def long_sleeping():
     time.sleep(4)
-
-short_sleeping("so sleepy")
