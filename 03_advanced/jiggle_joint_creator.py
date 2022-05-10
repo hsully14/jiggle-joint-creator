@@ -1,11 +1,3 @@
-import os
-
-import maya.cmds as mc
-import pymel.core as pm
-
-import mesh_utils as mu
-import control_curve_utils as ccu
-
 #--------------------------------------------------------------------------------#
 #            
 #             jiggle_joint_creator.py 
@@ -33,10 +25,18 @@ import control_curve_utils as ccu
 #
 #--------------------------------------------------------------------------------#
 
-#adding header image
-IMG_PATH = os.path.dirname(__file__) + "/img/"
-JIGGLE_COMPONENTS = {}
+import os
 
+import maya.cmds as mc
+import pymel.core as pm
+
+import mesh_utils as mu
+import control_curve_utils as ccu
+
+
+
+# adding header image
+IMG_PATH = os.path.dirname(__file__) + "/img/"
 
 def jiggle_joint_ui():
     #**************************************************************************
@@ -293,103 +293,8 @@ def create_jiggle_setup():
 
     print('Created jiggle setup')
 
-def build_jiggle_plane(ctrl_name, sourceLoc, side):
-    """Build jiggle plane, controller, and joint, based on input locator. Choose name and parent module.
 
-    Parameters:
-        name (string): jiggle control name, ie "Spine"
-        sourceLoc (string): reference locator or object for jiggle plane transforms
-        side (string): side of the body the controller is located, L, R, or C
-        
-    Returns:
-        geo
-        jntMultNode
 
-    """
-
-    # object names
-    controlName = 'C_{}_{}_Jiggle'.format(side, ctrl_name)
-    geoName = 'H_{}_{}_Jiggle_Proxy'.format(side, ctrl_name)
-    pinName = 'F_{}_{}_UVPin'.format(side, ctrl_name)
-    jointName = 'J_{}_{}_Jiggle'.format(side, ctrl_name)
-
-    # make plane
-    geo = mc.polyPlane(name=geoName,
-                       w=3,
-                       h=3,
-                       sh=6,
-                       sw=6,
-                       ch=False,
-                       ax=[1, 0, 0])[0]
-    geoShape = mc.listRelatives(geo)[0]
-    orig = mc.deformableShape(geo, cog=True)
-
-    # make joint
-    mc.select(clear=True)
-    joint = mc.joint(n=jointName)
-
-    # make jiggle controller and add attrs for UV coordinates
-    controller = makeShape('sphere', name=controlName, axis='x', size=2)
-    mc.addAttr(controller, at='float', dv=.5, k=True, min=0, max=1, ln='coordinateU')
-    mc.addAttr(controller, at='float', dv=.5, k=True, min=0, max=1, ln='coordinateV')
-
-    # prep control for color updates and set color according to side
-    setSideColor(controller, side)
-
-    # make uvPin node, set temp axes
-    pin = mc.createNode('uvPin', name=pinName)
-    mc.setAttr('{}.normalAxis'.format(pin), 0)
-    mc.setAttr('{}.tangentAxis'.format(pin), 5)
-
-    # make connections from controller to UVpin
-    mc.connectAttr('{}.coordinateU'.format(controller), '{}.coordinate[0].coordinateU'.format(pin))
-    mc.connectAttr('{}.coordinateV'.format(controller), '{}.coordinate[0].coordinateV'.format(pin))
-    mc.connectAttr(orig[0], '{}.originalGeometry'.format(pin))
-    mc.connectAttr('{}.worldMesh[0]'.format(geoShape), '{}.deformedGeometry'.format(pin))
-    mc.connectAttr('{}.outputMatrix[0]'.format(pin), '{}.offsetParentMatrix'.format(controller))
-
-    #make matrix nodes for controller to joint, named for joint
-    jntDecompNode = mc.createNode('decomposeMatrix', n='{}_decomp'.format(jointName))
-    jntMultNode = mc.createNode('multMatrix', n='{}_mult'.format(jointName))
-
-    # make connections from controller to joint via matrices
-    mc.connectAttr('{}.worldMatrix[0]'.format(controller), '{}.matrixIn[0]'.format(jntMultNode))
-    mc.connectAttr('{}.matrixSum'.format(jntMultNode), '{}.inputMatrix'.format(jntDecompNode))
-    mc.connectAttr('{}.outputTranslate'.format(jntDecompNode), '{}.translate'.format(joint))
-    mc.connectAttr('{}.outputRotate'.format(jntDecompNode), '{}.rotate'.format(joint))   
-    mc.connectAttr('{}.outputScale'.format(jntDecompNode), '{}.scale'.format(joint))
-
-    # snap plane to source locator and freeze transforms
-    mc.matchTransform(geo, sourceLoc)
-    mc.makeIdentity(geo, apply=True)
-
-    #store data
-    JIGGLE_COMPONENTS['proxy_geo'] = geo
-    JIGGLE_COMPONENTS['jiggle_jnt'] = joint
-    JIGGLE_COMPONENTS['jiggle_ctrl'] = controller
-    JIGGLE_COMPONENTS['jnt_mult_node'] = jntMultNode
-
-    return [geo, jntMultNode]
-
-def shrink_wrap_geo(targetGeo, sourceGeo):
-    """Wrap jiggle plane to character main mesh 
-    
-    Parameters:
-        targetGeo (string): geo to be deformed, such as jiggle proxy plane
-        sourceGeo (string): geo to wrap to, such as skinned character mesh 
-        
-    Returns:
-        
-    """
-    shrinkWrapName = 'temp_{}_shrinkwrap'.format(targetGeo)
-
-    #create shrink wrap deformer to wrap jiggle plane to character mesh
-    shrinkWrapNode = pm.deformer(targetGeo, type='shrinkWrap', name=shrinkWrapName)[0]
-    pm.PyNode(sourceGeo).worldMesh[0] >> shrinkWrapNode.targetGeom
-    shrinkWrapNode.closestIfNoIntersection.set(True)
-    shrinkWrapNode.projection.set(4)
-
-    return [shrinkWrapName, targetGeo]
 
 def connectToHierarchy(jiggleJoint, parentJoint, jntMultNode, jiggleController, parentModule, proxyGeo):
     """Connect jiggle joint setup into rig module and skeletal hierarchy using matrices
@@ -418,119 +323,143 @@ def connectToHierarchy(jiggleJoint, parentJoint, jntMultNode, jiggleController, 
     mc.hide(proxyGeo)
 
 
-def test():
-    print('Hello World')
 
 
 # ************************************************************************************
 # CLEANING UP THIS MODULE - NEW STUFF STARTS BELOW
 # ************************************************************************************
+class JiggleJoint():
+    '''A class improves this module by making a standard base for the jiggle joint setup. It 
+    also allows for easier transference of data through the objects.'''
 
-# TODO: 4/26, implement mirroring. start work on UI to grab inputs. 
+    def __init__(self, name, base_geometry, source_verts, side):
+    # initialize class object with name and default info values
+        self.name = name
+        self.base_geometry = base_geometry
+        self.source_verts = source_verts
+        self.side = side
 
-def init_jiggle_joint(name, base_geometry, source_verts=[], side='None'):
-    """Build jiggle plane, controller, and joint, based on input locators. Input name and parent module.
+        self.jiggle_joint_pairs = {}
 
-    Parameters:
-        name (string): jiggle control name, ie "Spine"
-        base_geometry (string): duplicated geo used as driver mesh
-        source_loc (list): reference locators for joint positioning
-        side (string): side of the body the controller is located, L, R, or C
+        self.uv_pin = None
+        self.parent_joint = None
+        self.parent_group = None
+
+    def print_infos(self):
+        print("Name: {}".format(self.name))
+        print("Base driver geo: {}".format(self.base_geometry))
+        print("Source verts: {}".format(self.source_verts))
+        print("Side: {}".format(self.side))
         
-    Returns:
+    # TODO: 4/26, implement mirroring. start work on UI to grab inputs.
+
+    def init_jiggle_joint(self):
+        """Build jiggle plane, controller, and joint, based on input locators. Input name and parent module.
+
+        Parameters:
+            name (string): jiggle control name, ie "Spine"
+            self.base_geometry (string): duplicated geo used as driver mesh
+            source_loc (list): reference locators for joint positioning
+            self.side (string): self.side of the body the controller is located, L, R, or C
+            
+        Returns:
+            
+        """
+        self.uv_pin = mu.create_uv_pin(self.name, self.side, self.base_geometry)
+
+        for index, vert in enumerate(self.source_verts):
+            # format index to 2 digit number and add 1 for nicer object naming
+            naming_index = '{0:0=2d}'.format(index+1)
+            control_name = 'C_{}_{}_Jiggle_{}'.format(self.side, self.name, naming_index)
+            joint_name   = 'J_{}_{}_Jiggle_{}'.format(self.side, self.name, naming_index)
+
+            # create jiggle controller based on selected shape 
+            # TODO: expose shape, axis, size, to UI
+            controller = ccu.make_control_shape('sphere', control_name=control_name, axis='x', size=2)
+            ccu.set_side_color(controller, self.side)
+
+            vertex_uvs = mu.get_vertex_uvs(vert)
+            vertex_u = vertex_uvs[0]
+            vertex_v = vertex_uvs[1]
+
+            # create attrs to store UV coord data
+            mc.addAttr(controller, attributeType='float', defaultValue=vertex_u, keyable=True, minValue=0, maxValue=1, longName='coordinateU')
+            mc.addAttr(controller, attributeType='float', defaultValue=vertex_v, keyable=True, minValue=0, maxValue=1, longName='coordinateV')
+
+            # make connections from controller attrs to UVpin based on index count of controller
+            mc.connectAttr('{}.coordinateU'.format(controller), '{}.coordinate[{}].coordinateU'.format(self.uv_pin, index))
+            mc.connectAttr('{}.coordinateV'.format(controller), '{}.coordinate[{}].coordinateV'.format(self.uv_pin, index))
+
+            mc.connectAttr('{}.outputMatrix[{}]'.format(self.uv_pin, index), '{}.offsetParentMatrix'.format(controller))
+            
+            # create joint
+            mu.clear_selection()
+            joint = mc.joint(name=joint_name)
+
+            # TODO: create function to handle this matrix parenting?
+            # create matrix nodes for controller to joint driving
+            joint_decomp_node = mc.createNode('decomposeMatrix', n='{}_decomp'.format(joint_name))
+            joint_mult_node = mc.createNode('multMatrix', n='{}_mult'.format(joint_name))
+
+            # make connections from controller to joint via matrices
+            mc.connectAttr('{}.worldMatrix[0]'.format(controller), '{}.matrixIn[0]'.format(joint_mult_node))
+            mc.connectAttr('{}.matrixSum'.format(joint_mult_node), '{}.inputMatrix'.format(joint_decomp_node))
+            mc.connectAttr('{}.outputTranslate'.format(joint_decomp_node), '{}.translate'.format(joint))
+            mc.connectAttr('{}.outputRotate'.format(joint_decomp_node), '{}.rotate'.format(joint))   
+            mc.connectAttr('{}.outputScale'.format(joint_decomp_node), '{}.scale'.format(joint))
+
+            self.jiggle_joint_pairs[controller] = joint
+
+        geo_name = 'H_{}_{}_Jiggle_Proxy'.format(self.side, self.name)
+        self.base_geometry = mc.rename(self.base_geometry, geo_name)
+
+    def connectToHierarchy(jiggleJoint, parentJoint, jntMultNode, jiggleController, parentModule, proxyGeo):
+        """Connect jiggle joint setup into rig module and skeletal hierarchy using matrices
         
-    """
+        Parameters:
+            jiggleJoint (string): the individual jiggle joint
+            parentJoint (string): the skeletal joint to use as jiggle joint parent
+            jntMultNode (string): the jiggle joint's multmatrix node 
+            jiggleController (string): the jiggle controller
+            parentModule (string): the parent module to hold the jiggle controller and proxy geo
+            proxyGeo (string): skinned jiggle geo mesh 
 
-    # TODO: confirm this naming convention, naming is unclear with 'C' center naming - J_C_, C_C_ 
-    # maybe create single variable to control naming, allow for easier updating?
-
-    # TODO: convert UVpin creation to function?
-    pin_name = 'F_{}_{}_UVPin'.format(side, name)
-    # make uvPin node, set temp axes
-    uv_pin = mc.createNode('uvPin', name=pin_name)
-    mc.setAttr('{}.normalAxis'.format(uv_pin), 0)
-    mc.setAttr('{}.tangentAxis'.format(uv_pin), 5)
+        Returns:
+            
+        """
     
-    # get info from base_geometry
-    base_geometry_shape = mc.listRelatives(base_geometry)[0]
-    shape_orig = mc.deformableShape(base_geometry, createOriginalGeometry=True)
+        # parent JJ to parent joint and cancel transforms out with matrix connection
+        mc.parent(jiggleJoint, parentJoint)
+        mc.connectAttr('{}.worldInverseMatrix[0]'.format(parentJoint), '{}.matrixIn[1]'.format(jntMultNode))
 
-    # connect pin to base_geometry 
-    # TODO: convert this to function? get base geo info 
-    mc.connectAttr(shape_orig[0], '{}.originalGeometry'.format(uv_pin))
-    mc.connectAttr('{}.worldMesh[0]'.format(base_geometry_shape), '{}.deformedGeometry'.format(uv_pin))
+        mc.parent(jiggleController, parentModule)
 
-    ### get UV coordinate of points first, then input point UV to coordinate
-    ### assign UV coord data to UV info on controllers, then connect to UV pin attr
-    ### then connect offset parent matrix data to controller, with existing UV info
+        # parent proxy jiggle geo into G_Proxy group and hide visibility
+        proxyGrp = mc.group(n='G_Jiggle_Proxy', em=True)
+        mc.parent(proxyGeo, proxyGrp)
+        mc.hide(proxyGeo)
 
-    for index, vert in enumerate(source_verts):
-        print(index, vert)
+    def connect_to_hierarchy(self):
+        pass
 
-        # format index to 2 digit number and add 1 for nicer object naming
-        naming_index = '{0:0=2d}'.format(index+1)
-        control_name = 'C_{}_{}_Jiggle_{}'.format(side, name, naming_index)
-        joint_name   = 'J_{}_{}_Jiggle_{}'.format(side, name, naming_index)
+        # for pair in self.jiggle_joint_pairs.keys():
+        #     print(pair)
+        #     mc.parent(self.jiggle_joint_pairs[controller], self.parent_joint)
+        #     mc.connectAttr('{}.worldInverseMatrix[0]'.format(self.parent_joint), '{}.matrixIn[1]'.format(jntMultNode))
 
-        # create jiggle controller based on selected shape 
-        # TODO: expose shape, axis, size, to UI
-        controller = ccu.make_control_shape('sphere', control_name=control_name, axis='x', size=2)
-        ccu.set_side_color(controller, side)
-
-        vertex_uvs = mu.get_vertex_uvs(vert)
-        vertex_u = vertex_uvs[0]
-        vertex_v = vertex_uvs[1]
-
-        # create attrs to store UV coord data
-        mc.addAttr(controller, attributeType='float', defaultValue=vertex_u, keyable=True, minValue=0, maxValue=1, longName='coordinateU')
-        mc.addAttr(controller, attributeType='float', defaultValue=vertex_v, keyable=True, minValue=0, maxValue=1, longName='coordinateV')
-
-        # make connections from controller attrs to UVpin based on index count of controller
-        mc.connectAttr('{}.coordinateU'.format(controller), '{}.coordinate[{}].coordinateU'.format(uv_pin, index))
-        mc.connectAttr('{}.coordinateV'.format(controller), '{}.coordinate[{}].coordinateV'.format(uv_pin, index))
-
-        # connect UVpin to controller offset parent for follow
-        # TODO: figure out where things should be placed for this connection to happen
-        mc.connectAttr('{}.outputMatrix[{}]'.format(uv_pin, index), '{}.offsetParentMatrix'.format(controller))
+        mc.parent(jiggleController, parentModule)
         
-        # create joint
-        mu.clear_selection()
-        joint = mc.joint(name=joint_name)
-
-        # TODO: create function to handle this matrix parenting?
-        # create matrix nodes for controller to joint driving
-        joint_decomp_node = mc.createNode('decomposeMatrix', n='{}_decomp'.format(joint_name))
-        joint_mult_node = mc.createNode('multMatrix', n='{}_mult'.format(joint_name))
-
-        # make connections from controller to joint via matrices
-        mc.connectAttr('{}.worldMatrix[0]'.format(controller), '{}.matrixIn[0]'.format(joint_mult_node))
-        mc.connectAttr('{}.matrixSum'.format(joint_mult_node), '{}.inputMatrix'.format(joint_decomp_node))
-        mc.connectAttr('{}.outputTranslate'.format(joint_decomp_node), '{}.translate'.format(joint))
-        mc.connectAttr('{}.outputRotate'.format(joint_decomp_node), '{}.rotate'.format(joint))   
-        mc.connectAttr('{}.outputScale'.format(joint_decomp_node), '{}.scale'.format(joint))
-
-    geo_name = 'H_{}_{}_Jiggle_Proxy'.format(side, name)
-    mc.rename(base_geometry, geo_name)
-
-        # #store data
-        # JIGGLE_COMPONENTS['proxy_geo'] = geo
-        # JIGGLE_COMPONENTS['jiggle_jnt'] = joint
-        # JIGGLE_COMPONENTS['jiggle_ctrl'] = controller
-        # JIGGLE_COMPONENTS['jnt_mult_node'] = joint_mult_node
-
-        # return [geo, joint_mult_node]
+        proxyGrp = mc.group(n='G_Jiggle_Proxy', em=True)
+        mc.parent(proxyGeo, proxyGrp)
+        mc.hide(proxyGeo)
 
 
 
 
 
-
-
-
-
-
-
-
+        ### get UV coordinate of points first, then input point UV to coordinate
+        ### assign UV coord data to UV info on controllers, then connect to UV pin attr
+        ### then connect offset parent matrix data to controller, with existing UV info
 
 
 

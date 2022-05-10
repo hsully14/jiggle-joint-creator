@@ -426,6 +426,33 @@ def test():
 # CLEANING UP THIS MODULE - NEW STUFF STARTS BELOW
 # ************************************************************************************
 
+class JiggleJoint():
+    '''A class improves this module by making a standard base for the jiggle joint setup. It 
+    also allows for easier transference of data through the objects.'''
+
+    pass
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # TODO: 4/26, implement mirroring. start work on UI to grab inputs. 
 
 def init_jiggle_joint(name, base_geometry, source_verts=[], side='None'):

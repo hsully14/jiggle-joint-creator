@@ -13,21 +13,27 @@ START
 main_function
 END
 
+# Check!
 
 
 1. Print the processing time of all sleeping func
 
 END - 00:00:00
 
+# Check!
 
 
 2. PRINT also the name of the function
 
 START - long_sleeping
 
+# Check!
 
 
 3. INCLUDE a decorator into your own application
+
+# TODO: this^
+
 """
 
 

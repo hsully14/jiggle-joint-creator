@@ -19,7 +19,7 @@ Learning new functions, constructs and a better way of collaboration.
 #*******************************************************************************
 Create a cube class in cube.py
 
-
+# Check!
 
 
 
@@ -30,6 +30,7 @@ a) Update one of your modules using classes.
    Make sure to use one of the benefits of classes (else it's pointless).
    Write a comment in the docString of the class why a class would improve this module.
 
+# TODO: this^
 
 b) Update one of your modules using class parenting.
    Write a comment in the docString of the class why parenting would improve this module.
@@ -37,6 +38,7 @@ b) Update one of your modules using class parenting.
    ALTERNATIVE: Should you have a hard time finding a good example in your code,
    create a hypothetical situation where parenting would make sense.
 
+# TODO: this^
 
 NOTE: a) & b) could be the same task.
 
@@ -54,7 +56,7 @@ NOTE: a) & b) could be the same task.
     • Write a comment in the call of the configuration file
       why a configuration file would improve this module.
 
-
+# TODO: this^
 
 
 
@@ -64,6 +66,7 @@ NOTE: a) & b) could be the same task.
 #*******************************************************************************
 Create a decorator in decorator.py
 
+# Check!
 
 
 """

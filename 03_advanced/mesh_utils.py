@@ -1,12 +1,13 @@
+# Control curve creation utilities - shapes dictionary and helper functions
+
 import maya.cmds as mc
 import pymel.core as pm
 import maya.api.OpenMaya as om
 
+
 # ************************************************************************************
 # HELPER FUNCTIONS
 # ************************************************************************************
-
-
 def rename_skincluster(objects=[]):
     """Renames skinclusters based on object name. Helper function for copy_skin_cluster.
 
@@ -185,6 +186,25 @@ def get_vertex_uvs(vert):
     uv_values = mc.polyEditUV(query=True)
 
     return uv_values
+
+
+def create_uv_pin(name, side, base_geometry):
+    pin_name = 'F_{}_{}_UVPin'.format(side, name)
+
+    # create uvPin node, set temp axes
+    uv_pin = mc.createNode('uvPin', name=pin_name)
+    mc.setAttr('{}.normalAxis'.format(uv_pin), 0)
+    mc.setAttr('{}.tangentAxis'.format(uv_pin), 5)
+
+    base_geometry_shape = mc.listRelatives(base_geometry)[0]
+    shape_orig = mc.deformableShape(base_geometry_shape, createOriginalGeometry=True)
+
+    # connect pin to base_geometry 
+    mc.connectAttr(shape_orig[0], '{}.originalGeometry'.format(uv_pin))
+    mc.connectAttr('{}.worldMesh[0]'.format(base_geometry_shape), '{}.deformedGeometry'.format(uv_pin))
+
+    return uv_pin
+
 
 
 # ************************************************************************************

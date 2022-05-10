@@ -85,7 +85,7 @@ SIDE_COLORS = {
 # HELPER FUNCTIONS
 # ************************************************************************************
 
-
+    
 def make_control_shape(shape, control_name='control', axis='y', size=1):
     """Creates NURBS curve shape for animateable control
 
