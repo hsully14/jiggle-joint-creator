@@ -88,16 +88,15 @@ def make_control_shape(shape, control_name='control', axis='y', size=1):
     """Creates NURBS curve shape for animateable control
 
     Arguments:
-        shape : type of shape to create, from ORIENTS
-        control_name (string): name of controller
-        axis (string): primary aim axis
-        size (integer): transform size
+        shape (str): type of shape to create, from ORIENTS
+        control_name (str): name of controller
+        axis (str): primary aim axis
+        size (str): transform size
 
     Returns:
-        control_curve (string): NURBS curve transform 
+        control_curve ((str)): NURBS curve transform
     """
     # TODO: expose axis, name, and size to UI later on
-
     # verify axis input and get orient values from aimAxis
     if axis not in ORIENTS:
         # TODO: change this to a logged error message
@@ -135,11 +134,9 @@ def set_side_color(control_name, side):
     """Set control color based on given side of rig. References constants in file header.
 
     Arguments:
-        control_name (string): name of controller to act on
-        side (string): side of body where controller is placed: L, R, C, or None
-
+        control_name (str): name of controller to act on
+        side (str): side of body where controller is placed: L, R, C, or None
     """
-
     # get control shape node and activate color overrides
     control_shape = mc.listRelatives(control_name, shapes=True)[0]
     mc.setAttr('{}.overrideEnabled'.format(control_shape), 1)

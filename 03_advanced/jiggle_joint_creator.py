@@ -1,12 +1,5 @@
 #--------------------------------------------------------------------------------#
 #            
-#             jiggle_joint_creator.py 
-#             March 2022 Haley Sullivan
-#             Email: hsully14@gmail.com
-#             Website: www.artstation.com/hsully
-#
-#--------------------------------------------------------------------------------#
-#            
 #             this UI allows the user to create a UVPin-based jiggle/tweaker joint
 #             setup for secondary animation, and connects it into an existing hierarchy
 #             and skinned mesh based on user inputs. the script can be added 
@@ -25,19 +18,27 @@
 #
 #--------------------------------------------------------------------------------#
 
-import os
+import sys, os
 
 import maya.cmds as mc
-import pymel.core as pm
+import maya.OpenMayaUI as omui
+
+from PySide2 import QtCore, QtWidgets, QtUiTools, QtGui
+from shiboken2 import wrapInstance
 
 import mesh_utils as mu
 import control_curve_utils as ccu
 
 
-
-# adding header image
+# ************************************************************************************
+# VARIABLES
+# ************************************************************************************
 IMG_PATH = os.path.dirname(__file__) + "/img/"
 
+
+# ************************************************************************************
+# UI # 5/10 - planning to move UI elements to separate file?
+# ************************************************************************************
 def jiggle_joint_ui():
     #**************************************************************************
     # CLOSE if exists (avoid duplicates)
@@ -191,6 +192,21 @@ def jiggle_joint_ui():
 
 #jiggle_joint_ui()
 
+
+# ************************************************************************************
+# UI HELPERS
+# ************************************************************************************
+def maya_main_window():
+	"""
+	Return the Maya main window widget as a Python object
+	"""
+	main_window_ptr = omui.MQtUtil.mainWindow()
+	if sys.version_info.major >= 3:
+		return wrapInstance(int(main_window_ptr), QtWidgets.QWidget)
+	else:
+		return wrapInstance(long(main_window_ptr), QtWidgets.QWidget)
+
+
 def confirm_creation_popup():
 
     popup_message = 'Are you ready?'
@@ -235,235 +251,174 @@ def check_empty_inputs(inputs=[]):
 
     return missing_inputs
 
-def create_jiggle_setup():
-    """Helper function to call and run components of jiggle joint creator system 
-        
-    """
     
-    #get values from UI textfields
-    skin_mesh = mc.textField('skinned_mesh', query=True, text=True)
-    sourceLoc = mc.textField('locator', query=True, text=True)
-    ctrl_name = mc.textField('control_name', query=True, text=True)
-    side = mc.textField('body_side', query=True, text=True)
-    jnt_parent = mc.textField('jnt_parent', query=True, text=True)
-    grp_parent = mc.textField('parent_grp', query=True, text=True)
-    
-    #validate input values, cancel if empty strings exist
-    inputs = [skin_mesh, sourceLoc, ctrl_name, side, jnt_parent, grp_parent]
-    if check_empty_inputs(inputs):
-        missing_info_popup()
-        return
-
-    #store information in dictionary for easier access; FIXME: make this better 
-    JIGGLE_COMPONENTS['skin_mesh'] = skin_mesh
-    JIGGLE_COMPONENTS['locator'] = sourceLoc
-    JIGGLE_COMPONENTS['control_name'] = ctrl_name
-    JIGGLE_COMPONENTS['body_side'] = side
-    JIGGLE_COMPONENTS['jnt_parent'] = jnt_parent
-    JIGGLE_COMPONENTS['parent_grp'] = grp_parent
-
-    #start building jiggle setup
-    build_jiggle_plane(ctrl_name, sourceLoc, side)
-    
-    #shrinkwrap geo to skinned geo
-    shrink_wrap_geo(JIGGLE_COMPONENTS['proxy_geo'], JIGGLE_COMPONENTS['skin_mesh'])
-
-    #remove shrinkwrap node and history
-    mc.delete(JIGGLE_COMPONENTS['proxy_geo'], ch=True)
-
-    #copy skinning from skin_mesh to proxy_geo
-    copySkinCluster(source=JIGGLE_COMPONENTS['skin_mesh'], dest=[JIGGLE_COMPONENTS['proxy_geo']], rename=True)
-
-    #collect all created items and connect them to the hierarchy using matrices
-    connectToHierarchy(JIGGLE_COMPONENTS['jiggle_jnt'], 
-                        JIGGLE_COMPONENTS['jnt_parent'], 
-                        JIGGLE_COMPONENTS['jnt_mult_node'], 
-                        JIGGLE_COMPONENTS['jiggle_ctrl'], 
-                        JIGGLE_COMPONENTS['parent_grp'], 
-                        JIGGLE_COMPONENTS['proxy_geo'])
-
-    #get values from UI checkbox
-    add_to_skc = mc.checkBox('cbx_add_to_skc', query=True, value=True)
-
-    if add_to_skc:
-        addJntsToSkin(JIGGLE_COMPONENTS['skin_mesh'], joints=[JIGGLE_COMPONENTS['jiggle_jnt']])
-
-    #hide locator 
-    mc.hide(sourceLoc)
-
-    print('Created jiggle setup')
-
-
-
-
-def connectToHierarchy(jiggleJoint, parentJoint, jntMultNode, jiggleController, parentModule, proxyGeo):
-    """Connect jiggle joint setup into rig module and skeletal hierarchy using matrices
-    
-    Parameters:
-        jiggleJoint (string): the individual jiggle joint
-        parentJoint (string): the skeletal joint to use as jiggle joint parent
-        jntMultNode (string): the jiggle joint's multmatrix node 
-        jiggleController (string): the jiggle controller
-        parentModule (string): the parent module to hold the jiggle controller and proxy geo
-        proxyGeo (string): skinned jiggle geo mesh 
-
-    Returns:
-        
-    """
-    
-    # parent JJ to parent joint and cancel transforms out with matrix connection
-    mc.parent(jiggleJoint, parentJoint)
-    mc.connectAttr('{}.worldInverseMatrix[0]'.format(parentJoint), '{}.matrixIn[1]'.format(jntMultNode))
-
-    mc.parent(jiggleController, parentModule)
-
-    # parent proxy jiggle geo into G_Proxy group and hide visibility
-    proxyGrp = mc.group(n='G_Jiggle_Proxy', em=True)
-    mc.parent(proxyGeo, proxyGrp)
-    mc.hide(proxyGeo)
-
-
-
-
 # ************************************************************************************
-# CLEANING UP THIS MODULE - NEW STUFF STARTS BELOW
+# JIGGLE JOINT CLASS
 # ************************************************************************************
+# TODO: 4/26, implement mirroring. start work on UI to grab inputs.
 class JiggleJoint():
     '''A class improves this module by making a standard base for the jiggle joint setup. It 
-    also allows for easier transference of data through the objects.'''
+    also allows for easier transference of data within the object, and easier data access on created
+    jiggle joint objects.'''
 
-    def __init__(self, name, base_geometry, source_verts, side):
-    # initialize class object with name and default info values
-        self.name = name
-        self.base_geometry = base_geometry
-        self.source_verts = source_verts
+    def __init__(self, joint_name, control_name, source_vert, uv_pin, side, index, base_geometry):
+        # Question - is there a better way to init these variables? Will want to grab these from UI
+        self.joint_name = joint_name
+        self.control_name = control_name
+        self.source_vert = source_vert
+        self.uv_pin = uv_pin
         self.side = side
+        self.index = index
+        self.base_geometry = base_geometry
 
-        self.jiggle_joint_pairs = {}
-
-        self.uv_pin = None
-        self.parent_joint = None
-        self.parent_group = None
+        self.create_jiggle_joint()
 
     def print_infos(self):
-        print("Name: {}".format(self.name))
-        print("Base driver geo: {}".format(self.base_geometry))
-        print("Source verts: {}".format(self.source_verts))
+        print("Joint name: {}".format(self.joint_name))
+        print("Control name: {}".format(self.control_name))
+        print("Source vertex: {}".format(self.source_vert))
+        print("UV pin driver: {}".format(self.uv_pin))
         print("Side: {}".format(self.side))
+        print("Index: {}".format(self.index))
+        print("Base geometry: {}".format(self.base_geometry))
         
-    # TODO: 4/26, implement mirroring. start work on UI to grab inputs.
+    def create_jiggle_joint(self):
+        '''assemble jiggle joint setup. create controller, joint, and hook into uvpin node'''
+        # TODO: expose shape, axis, size, to UI
+        controller = ccu.make_control_shape('sphere', control_name=self.control_name, axis='x', size=2)
+        ccu.set_side_color(controller, self.side)
 
-    def init_jiggle_joint(self):
-        """Build jiggle plane, controller, and joint, based on input locators. Input name and parent module.
+        vertex_uvs = mu.get_vertex_uvs(self.source_vert)
+        vertex_u = vertex_uvs[0]
+        vertex_v = vertex_uvs[1]
 
-        Parameters:
-            name (string): jiggle control name, ie "Spine"
-            self.base_geometry (string): duplicated geo used as driver mesh
-            source_loc (list): reference locators for joint positioning
-            self.side (string): self.side of the body the controller is located, L, R, or C
-            
-        Returns:
-            
-        """
-        self.uv_pin = mu.create_uv_pin(self.name, self.side, self.base_geometry)
+        # create attrs to store UV coord data
+        mc.addAttr(controller, attributeType='float', defaultValue=vertex_u, keyable=True, minValue=0, maxValue=1, longName='coordinateU')
+        mc.addAttr(controller, attributeType='float', defaultValue=vertex_v, keyable=True, minValue=0, maxValue=1, longName='coordinateV')
 
-        for index, vert in enumerate(self.source_verts):
-            # format index to 2 digit number and add 1 for nicer object naming
-            naming_index = '{0:0=2d}'.format(index+1)
-            control_name = 'C_{}_{}_Jiggle_{}'.format(self.side, self.name, naming_index)
-            joint_name   = 'J_{}_{}_Jiggle_{}'.format(self.side, self.name, naming_index)
-
-            # create jiggle controller based on selected shape 
-            # TODO: expose shape, axis, size, to UI
-            controller = ccu.make_control_shape('sphere', control_name=control_name, axis='x', size=2)
-            ccu.set_side_color(controller, self.side)
-
-            vertex_uvs = mu.get_vertex_uvs(vert)
-            vertex_u = vertex_uvs[0]
-            vertex_v = vertex_uvs[1]
-
-            # create attrs to store UV coord data
-            mc.addAttr(controller, attributeType='float', defaultValue=vertex_u, keyable=True, minValue=0, maxValue=1, longName='coordinateU')
-            mc.addAttr(controller, attributeType='float', defaultValue=vertex_v, keyable=True, minValue=0, maxValue=1, longName='coordinateV')
-
-            # make connections from controller attrs to UVpin based on index count of controller
-            mc.connectAttr('{}.coordinateU'.format(controller), '{}.coordinate[{}].coordinateU'.format(self.uv_pin, index))
-            mc.connectAttr('{}.coordinateV'.format(controller), '{}.coordinate[{}].coordinateV'.format(self.uv_pin, index))
-
-            mc.connectAttr('{}.outputMatrix[{}]'.format(self.uv_pin, index), '{}.offsetParentMatrix'.format(controller))
-            
-            # create joint
-            mu.clear_selection()
-            joint = mc.joint(name=joint_name)
-
-            # TODO: create function to handle this matrix parenting?
-            # create matrix nodes for controller to joint driving
-            joint_decomp_node = mc.createNode('decomposeMatrix', n='{}_decomp'.format(joint_name))
-            joint_mult_node = mc.createNode('multMatrix', n='{}_mult'.format(joint_name))
-
-            # make connections from controller to joint via matrices
-            mc.connectAttr('{}.worldMatrix[0]'.format(controller), '{}.matrixIn[0]'.format(joint_mult_node))
-            mc.connectAttr('{}.matrixSum'.format(joint_mult_node), '{}.inputMatrix'.format(joint_decomp_node))
-            mc.connectAttr('{}.outputTranslate'.format(joint_decomp_node), '{}.translate'.format(joint))
-            mc.connectAttr('{}.outputRotate'.format(joint_decomp_node), '{}.rotate'.format(joint))   
-            mc.connectAttr('{}.outputScale'.format(joint_decomp_node), '{}.scale'.format(joint))
-
-            self.jiggle_joint_pairs[controller] = joint
-
-        geo_name = 'H_{}_{}_Jiggle_Proxy'.format(self.side, self.name)
-        self.base_geometry = mc.rename(self.base_geometry, geo_name)
-
-    def connectToHierarchy(jiggleJoint, parentJoint, jntMultNode, jiggleController, parentModule, proxyGeo):
-        """Connect jiggle joint setup into rig module and skeletal hierarchy using matrices
+        # make connections from controller attrs to UVpin based on index count of controller
+        mc.connectAttr('{}.coordinateU'.format(controller), '{}.coordinate[{}].coordinateU'.format(self.uv_pin, self.index))
+        mc.connectAttr('{}.coordinateV'.format(controller), '{}.coordinate[{}].coordinateV'.format(self.uv_pin, self.index))
+        mc.connectAttr('{}.outputMatrix[{}]'.format(self.uv_pin, self.index), '{}.offsetParentMatrix'.format(controller))
         
-        Parameters:
-            jiggleJoint (string): the individual jiggle joint
-            parentJoint (string): the skeletal joint to use as jiggle joint parent
-            jntMultNode (string): the jiggle joint's multmatrix node 
-            jiggleController (string): the jiggle controller
-            parentModule (string): the parent module to hold the jiggle controller and proxy geo
-            proxyGeo (string): skinned jiggle geo mesh 
+        mu.clear_selection()
+        self.joint = mc.joint(name=self.joint_name)
 
-        Returns:
-            
-        """
+        # TODO: create function to handle this matrix parenting?
+        # create matrix nodes for controller to joint driving
+        self.joint_decomp_node = mc.createNode('decomposeMatrix', n='{}_decomp'.format(self.joint_name))
+        self.joint_mult_node = mc.createNode('multMatrix', n='{}_mult'.format(self.joint_name))
+
+        # make connections from controller to joint via matrices
+        mc.connectAttr('{}.worldMatrix[0]'.format(controller), '{}.matrixIn[0]'.format(self.joint_mult_node))
+        mc.connectAttr('{}.matrixSum'.format(self.joint_mult_node), '{}.inputMatrix'.format(self.joint_decomp_node))
+        mc.connectAttr('{}.outputTranslate'.format(self.joint_decomp_node), '{}.translate'.format(self.joint))
+        mc.connectAttr('{}.outputRotate'.format(self.joint_decomp_node), '{}.rotate'.format(self.joint))   
+        mc.connectAttr('{}.outputScale'.format(self.joint_decomp_node), '{}.scale'.format(self.joint))
+
+
+# ************************************************************************************
+# JOINT CREATION HELPERS
+# ************************************************************************************
+def build_jiggle_setups(name, base_geometry, source_verts, side):
+    '''feed info to jigglejoint class object and loop through selected verts'''
+    #TODO: figure out when to rename base geometry; need to replace naming if done at front
+    #geo_name = 'H_{}_{}_Jiggle_Proxy'.format(side, name)
+    #base_geometry = mc.rename(base_geometry, geo_name)
+    jiggle_setups = []
+
+    uv_pin = mu.create_uv_pin(name, side, base_geometry)
+
+    for index, source_vert in enumerate(source_verts):
+        # format index to 2 digit number and add 1 for nicer object naming
+        naming_index = '{0:0=2d}'.format(index+1)
+        control_name = 'C_{}_{}_Jiggle_{}'.format(side, name, naming_index)
+        joint_name   = 'J_{}_{}_Jiggle_{}'.format(side, name, naming_index)
+
+        jiggle_joint = JiggleJoint(joint_name, control_name, source_vert, uv_pin, side, naming_index, base_geometry)
+        jiggle_setups.append(jiggle_joint)
+        
+    return jiggle_setups
+
+
+def connect_to_hierarchy(jiggle_setups, parent_group, parent_joint, base_geometry):
+    '''attach created jigglejoint objects to hierarchy'''
+    # TODO: evaluate this on more complex setup
+
+    # controller, joint
+    for jiggle_joint in jiggle_setups:
+        mc.parent(jiggle_joint.joint, parent_joint)
+        mc.connectAttr('{}.worldInverseMatrix[0]'.format(parent_joint), '{}.matrixIn[1]'.format(jiggle_joint.joint_mult_node))
+        mc.parent(jiggle_joint.control_name, parent_group)
+
+    # driver geo
+    if not mc.objExists('G_Jiggle_Proxy'):
+        proxy_geo_group = mc.group(name='G_Jiggle_Proxy', empty=True)
+    mc.parent(base_geometry, proxy_geo_group)
+    mc.hide(base_geometry)
+
+
+
+
+
+# FIXME: old code, refactor in progress. put here for safekeeping
+# def create_jiggle_setup():
+#     """Helper function to call and run components of jiggle joint creator system 
+        
+#     """
     
-        # parent JJ to parent joint and cancel transforms out with matrix connection
-        mc.parent(jiggleJoint, parentJoint)
-        mc.connectAttr('{}.worldInverseMatrix[0]'.format(parentJoint), '{}.matrixIn[1]'.format(jntMultNode))
+#     #get values from UI textfields
+#     skin_mesh = mc.textField('skinned_mesh', query=True, text=True)
+#     sourceLoc = mc.textField('locator', query=True, text=True)
+#     ctrl_name = mc.textField('control_name', query=True, text=True)
+#     side = mc.textField('body_side', query=True, text=True)
+#     jnt_parent = mc.textField('jnt_parent', query=True, text=True)
+#     grp_parent = mc.textField('parent_grp', query=True, text=True)
+    
+#     #validate input values, cancel if empty strings exist
+#     inputs = [skin_mesh, sourceLoc, ctrl_name, side, jnt_parent, grp_parent]
+#     if check_empty_inputs(inputs):
+#         missing_info_popup()
+#         return
 
-        mc.parent(jiggleController, parentModule)
+#     #store information in dictionary for easier access; FIXME: make this better 
+#     JIGGLE_COMPONENTS['skin_mesh'] = skin_mesh
+#     JIGGLE_COMPONENTS['locator'] = sourceLoc
+#     JIGGLE_COMPONENTS['control_name'] = ctrl_name
+#     JIGGLE_COMPONENTS['body_side'] = side
+#     JIGGLE_COMPONENTS['jnt_parent'] = jnt_parent
+#     JIGGLE_COMPONENTS['parent_grp'] = grp_parent
 
-        # parent proxy jiggle geo into G_Proxy group and hide visibility
-        proxyGrp = mc.group(n='G_Jiggle_Proxy', em=True)
-        mc.parent(proxyGeo, proxyGrp)
-        mc.hide(proxyGeo)
+#     #start building jiggle setup
+#     build_jiggle_plane(ctrl_name, sourceLoc, side)
+    
+#     #shrinkwrap geo to skinned geo
+#     shrink_wrap_geo(JIGGLE_COMPONENTS['proxy_geo'], JIGGLE_COMPONENTS['skin_mesh'])
 
-    def connect_to_hierarchy(self):
-        pass
+#     #remove shrinkwrap node and history
+#     mc.delete(JIGGLE_COMPONENTS['proxy_geo'], ch=True)
 
-        # for pair in self.jiggle_joint_pairs.keys():
-        #     print(pair)
-        #     mc.parent(self.jiggle_joint_pairs[controller], self.parent_joint)
-        #     mc.connectAttr('{}.worldInverseMatrix[0]'.format(self.parent_joint), '{}.matrixIn[1]'.format(jntMultNode))
+#     #copy skinning from skin_mesh to proxy_geo
+#     copySkinCluster(source=JIGGLE_COMPONENTS['skin_mesh'], dest=[JIGGLE_COMPONENTS['proxy_geo']], rename=True)
 
-        mc.parent(jiggleController, parentModule)
-        
-        proxyGrp = mc.group(n='G_Jiggle_Proxy', em=True)
-        mc.parent(proxyGeo, proxyGrp)
-        mc.hide(proxyGeo)
+#     #collect all created items and connect them to the hierarchy using matrices
+#     connectToHierarchy(JIGGLE_COMPONENTS['jiggle_jnt'], 
+#                         JIGGLE_COMPONENTS['jnt_parent'], 
+#                         JIGGLE_COMPONENTS['jnt_mult_node'], 
+#                         JIGGLE_COMPONENTS['jiggle_ctrl'], 
+#                         JIGGLE_COMPONENTS['parent_grp'], 
+#                         JIGGLE_COMPONENTS['proxy_geo'])
 
+#     #get values from UI checkbox
+#     add_to_skc = mc.checkBox('cbx_add_to_skc', query=True, value=True)
 
+#     if add_to_skc:
+#         addJntsToSkin(JIGGLE_COMPONENTS['skin_mesh'], joints=[JIGGLE_COMPONENTS['jiggle_jnt']])
 
+#     #hide locator 
+#     mc.hide(sourceLoc)
 
-
-        ### get UV coordinate of points first, then input point UV to coordinate
-        ### assign UV coord data to UV info on controllers, then connect to UV pin attr
-        ### then connect offset parent matrix data to controller, with existing UV info
-
-
-
-
+#     print('Created jiggle setup')
 
 
 

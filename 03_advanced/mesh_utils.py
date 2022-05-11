@@ -1,8 +1,8 @@
 # Control curve creation utilities - shapes dictionary and helper functions
 
 import maya.cmds as mc
-import pymel.core as pm
-import maya.api.OpenMaya as om
+# import pymel.core as pm
+# import maya.api.OpenMaya as om
 
 
 # ************************************************************************************
