@@ -1,4 +1,6 @@
 # Control curve creation utilities - shapes dictionary and helper functions
+import os
+import json
 
 import maya.cmds as mc
 
@@ -7,94 +9,34 @@ import maya.cmds as mc
 # VARIABLES
 # ************************************************************************************
 ORIENTS = {'x': [1, 0, 0], 'y': [0, 1, 0], 'z': [0, 0, 1]}
-SHAPES = {
-    'square': [[-.5, 0, -.5], [-.5, 0, .5], [.5, 0, .5], [.5, 0, -.5],
-               [-.5, 0, -.5]],
-    'cube': [[-0.5, 0.5, 0.5], [0.5, 0.5, 0.5], [0.5, 0.5, -0.5],
-             [-0.5, 0.5, -0.5], [-0.5, 0.5, 0.5], [-0.5, -0.5, 0.5],
-             [-0.5, -0.5, -0.5], [0.5, -0.5, -0.5], [0.5, -0.5, 0.5],
-             [-0.5, -0.5, 0.5], [0.5, -0.5, 0.5], [0.5, 0.5, 0.5],
-             [0.5, 0.5, -0.5], [0.5, -0.5, -0.5], [-0.5, -0.5, -0.5],
-             [-0.5, 0.5, -0.5]],
-    'sphere': [[0.0, 0.5, 0.0], [-0.19, 0.46, 0.0], [-0.35, 0.35, 0.0],
-               [-0.46, 0.19, 0.0], [-0.5, 0.0, 0.0], [-0.46, -0.19, 0.0],
-               [-0.35, -0.35, 0.0], [-0.19, -0.46, 0.0], [0.0, -0.5, 0.0],
-               [0.19, -0.46, 0.0], [0.35, -0.35, 0.0], [0.46, -0.19, 0.0],
-               [0.5, 0.0, 0.0], [0.46, 0.19, 0.0], [0.35, 0.35, 0.0],
-               [0.19, 0.46, 0.0], [0.0, 0.5, 0.0], [0.0, 0.46, 0.19],
-               [0.0, 0.35, 0.35], [0.0, 0.19, 0.46], [0.0, 0.0, 0.5],
-               [0.19, 0.0, 0.46], [0.35, 0.0, 0.35], [0.46, 0.0, 0.19],
-               [0.5, 0.0, 0.0], [0.46, 0.0, -0.19], [0.35, 0.0, -0.35],
-               [0.19, 0.0, -0.46], [0.0, 0.0, -0.5], [-0.19, 0.0, -0.46],
-               [-0.35, 0.0, -0.35], [-0.46, 0.0, -0.19], [-0.5, 0.0, 0.0],
-               [-0.46, 0.0, 0.19], [-0.35, 0.0, 0.35], [-0.19, 0.0, 0.46],
-               [0.0, 0.0, 0.5], [0.0, -0.19, 0.46], [0.0, -0.35, 0.35],
-               [0.0, -0.46, 0.19], [0.0, -0.5, 0.0], [0.0, -0.46, -0.19],
-               [0.0, -0.35, -0.35], [0.0, -0.19, -0.46], [0.0, 0.0, -0.5],
-               [0.0, 0.19, -0.46], [0.0, 0.35, -0.35], [0.0, 0.46, -0.19],
-               [0.0, 0.5, 0.0]],
-    'arrow': [[0.0, 0.67, 0.4], [0.0, 0.0, 0.4], [0.0, 0.0, 0.67],
-              [0.0, -0.4, 0.0], [0.0, 0.0, -0.67], [0.0, 0.0, -0.4],
-              [0.0, 0.67, -0.4], [0.0, 0.67, 0.4]],
-    'plus': [[1.0, 0.0, -1.0], [2.0, 0.0, -1.0], [2.0, 0.0, 1.0],
-             [1.0, 0.0, 1.0], [1.0, 0.0, 2.0], [-1.0, 0.0, 2.0],
-             [-1.0, 0.0, 1.0], [-2.0, 0.0, 1.0], [-2.0, 0.0, -1.0],
-             [-1.0, 0.0, -1.0], [-1.0, 0.0, -2.0], [1.0, 0.0, -2.0],
-             [1.0, 0.0, -1.0]],
-    'orient': [[0.1, 0.6, -0.1], [0.5, 0.5, -0.1], [0.75, 0.33, -0.1],
-               [0.75, 0.33, -0.1], [0.75, 0.33, -0.34], [0.75, 0.33, -0.34],
-               [1.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.75, 0.33, 0.34],
-               [0.75, 0.33, 0.34], [0.75, 0.33, 0.1], [0.75, 0.33, 0.1],
-               [0.5, 0.5, 0.1], [0.1, 0.6, 0.1], [0.1, 0.6, 0.1],
-               [0.1, 0.5, 0.5], [0.1, 0.33, 0.75], [0.1, 0.33, 0.75],
-               [0.34, 0.33, 0.75], [0.34, 0.33, 0.75], [0.0, 0.0, 1.0],
-               [0.0, 0.0, 1.0], [-0.34, 0.33, 0.75], [-0.34, 0.33, 0.75],
-               [-0.1, 0.33, 0.75], [-0.1, 0.33, 0.75], [-0.1, 0.5, 0.5],
-               [-0.1, 0.6, 0.1], [-0.1, 0.6, 0.1], [-0.5, 0.5, 0.1],
-               [-0.75, 0.33, 0.1], [-0.75, 0.33, 0.1], [-0.75, 0.33, 0.34],
-               [-0.75, 0.33, 0.34], [-1.0, 0.0, 0.0], [-1.0, 0.0, 0.0],
-               [-0.75, 0.33, -0.34], [-0.75, 0.33, -0.34], [-0.75, 0.33, -0.1],
-               [-0.75, 0.33, -0.1], [-0.5, 0.5, -0.1], [-0.1, 0.6, -0.1],
-               [-0.1, 0.6, -0.1], [-0.1, 0.5, -0.5], [-0.1, 0.33, -0.75],
-               [-0.1, 0.33, -0.75], [-0.34, 0.33, -0.75], [-0.34, 0.33, -0.75],
-               [0.0, 0.0, -1.0], [0.0, 0.0, -1.0], [0.34, 0.33, -0.75],
-               [0.34, 0.33, -0.75], [0.1, 0.33, -0.75], [0.1, 0.33, -0.75],
-               [0.1, 0.5, -0.5], [0.1, 0.6, -0.1]],
-    'world': [[-2.0, 0.0, -6.0], [-4.0, 0.0, -6.0], [0.0, 0.0, -10.0],
-              [4.0, 0.0, -6.0], [2.0, 0.0, -6.0], [2.0, 0.0, -2.67],
-              [2.67, 0.0, -2.0], [6.0, 0.0, -2.0], [6.0, 0.0, -4.0],
-              [10.0, 0.0, 0.0], [6.0, 0.0, 4.0], [6.0, 0.0, 2.0],
-              [2.67, 0.0, 2.0], [2.0, 0.0, 2.67], [2.0, 0.0, 6.0],
-              [4.0, 0.0, 6.0], [0.0, 0.0, 10.0], [-4.0, 0.0, 6.0],
-              [-2.0, 0.0, 6.0], [-2.0, 0.0, 2.67], [-2.67, 0.0, 2.0],
-              [-6.0, 0.0, 2.0], [-6.0, 0.0, 4.0], [-10.0, 0.0, 0.0],
-              [-6.0, 0.0, -4.0], [-6.0, 0.0, -2.0], [-2.67, 0.0, -2.0],
-              [-2.0, 0.0, -2.67], [-2.0, 0.0, -6.0]],
-    'triangle': [[-.5, 0, 0], [0, 0, .5], [.5, 0, 0], [-.5, 0, 0]]
-}
 RGB = ("R", "G", "B")
-SIDE_COLORS = {
-    'L' : [0, 1, 1],
-    'R' : [1, 0, 0],
-    'C' : [1, 1, 0],
-    'None' : [1, .3, 0]
-}
+
+FILEPATH = os.path.dirname(__file__)
 
 
 # ************************************************************************************
 # HELPER FUNCTIONS
 # ************************************************************************************
+def ingest_config():
+    """Read .json file as Python object"""
+    config_file = FILEPATH + '/control_curve_config.json'
+
+    with open(config_file, 'r') as f:
+        config_data = json.loads(f.read())
+    return config_data
+
+
 def make_control_shape(shape, control_name='control', axis='y', size=1):
     """Creates NURBS curve shape for animateable control
 
     Arguments:
-        shape (str): type of shape to create, from ORIENTS
+        shape (str): type of shape to create, from control curve config
         control_name (str): name of controller
         axis (str): primary aim axis
         size (str): transform size
 
     Returns:
-        control_curve ((str)): NURBS curve transform
+        control_curve (str): NURBS curve transform
     """
     # TODO: expose axis, name, and size to UI later on
     # verify axis input and get orient values from aimAxis
@@ -104,13 +46,16 @@ def make_control_shape(shape, control_name='control', axis='y', size=1):
 
     orient = ORIENTS.get(axis)
 
+    config_data = ingest_config()
+    curve_shape = config_data['Control Shapes'][shape]
+
     if shape == 'circle':
         control_curve = mc.circle(name=control_name,
                                   normal=orient,
                                   constructionHistory=False,
                                   radius=(size * .5))[0]
     else:
-        control_curve = mc.curve(name=control_name, degree=1, point=SHAPES[shape])
+        control_curve = mc.curve(name=control_name, degree=1, point=curve_shape)
 
         mc.setAttr('{}.sx'.format(control_curve), size)
         mc.setAttr('{}.sy'.format(control_curve), size)
@@ -142,8 +87,11 @@ def set_side_color(control_name, side):
     mc.setAttr('{}.overrideEnabled'.format(control_shape), 1)
     mc.setAttr('{}.overrideRGBColors'.format(control_shape), 1)
 
+    config_data = ingest_config()
+    side_color = config_data['Side Colors'][side]
+
     # unzip RGB tuple, side color dict, and apply color
-    for channel, color in zip(RGB, SIDE_COLORS[side]):
+    for channel, color in zip(RGB, side_color):
         # mc.setAttr(control_shape + '.overrideColor%s' % channel, color)
         mc.setAttr('{}.overrideColor{}'.format(control_shape, channel), color)
 

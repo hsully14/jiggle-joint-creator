@@ -30,7 +30,7 @@ a) Update one of your modules using classes.
    Make sure to use one of the benefits of classes (else it's pointless).
    Write a comment in the docString of the class why a class would improve this module.
 
-# TODO: this^
+# Check!
 
 b) Update one of your modules using class parenting.
    Write a comment in the docString of the class why parenting would improve this module.
@@ -38,11 +38,13 @@ b) Update one of your modules using class parenting.
    ALTERNATIVE: Should you have a hard time finding a good example in your code,
    create a hypothetical situation where parenting would make sense.
 
-# TODO: this^
+   # I don't have a great use case for class parenting at the moment. I could potentially create a child class
+   of Jiggle Joint that has added functionality for space switching attributes for example. Or, I could override  
+   create_jiggle_joint() with a version using a rivet, or proximityPin constraint instead of a UVPin for an alternate use case. 
 
 NOTE: a) & b) could be the same task.
 
-
+# Check!
 
 
 
@@ -56,9 +58,10 @@ NOTE: a) & b) could be the same task.
     • Write a comment in the call of the configuration file
       why a configuration file would improve this module.
 
-# TODO: this^
+# The control_curve_config file makes it easier for artists and devs alike to update and customize
+the module with new colors and curve shapes, that then auto load into the UI (or will, when I get that far)
 
-
+# Check!
 
 
 #*******************************************************************************
