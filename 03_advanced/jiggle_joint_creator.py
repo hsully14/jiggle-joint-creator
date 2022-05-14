@@ -33,7 +33,8 @@ import control_curve_utils as ccu
 # ************************************************************************************
 # VARIABLES
 # ************************************************************************************
-IMG_PATH = os.path.dirname(__file__) + "/img/"
+FILEPATH = os.path.dirname(__file__)
+IMG_PATH = FILEPATH + "/img/"
 
 
 # ************************************************************************************
@@ -228,6 +229,7 @@ def confirm_creation_popup():
     if result == 'WAIT!':
         print('Double checking...')
 
+
 def missing_info_popup():
 
     popup_message = 'Missing info! Double check input fields'
@@ -240,6 +242,7 @@ def missing_info_popup():
                                 cancelButton='CLOSE')
 
     print(result)
+
 
 def check_empty_inputs(inputs=[]):
     

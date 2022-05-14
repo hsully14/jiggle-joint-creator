@@ -17,7 +17,7 @@ FILEPATH = os.path.dirname(__file__)
 # ************************************************************************************
 # HELPER FUNCTIONS
 # ************************************************************************************
-def ingest_config():
+def get_curve_config():
     """Read .json file as Python object"""
     config_file = FILEPATH + '/control_curve_config.json'
 
@@ -40,14 +40,15 @@ def make_control_shape(shape, control_name='control', axis='y', size=1):
     """
     # TODO: expose axis, name, and size to UI later on
     # verify axis input and get orient values from aimAxis
+    curve_shape = get_curve_config()['Control Shapes'][shape]
+
     if axis not in ORIENTS:
         # TODO: change this to a logged error message
         raise ValueError('Axis must be \'x\', \'y\', or \'z\'.')
 
     orient = ORIENTS.get(axis)
 
-    config_data = ingest_config()
-    curve_shape = config_data['Control Shapes'][shape]
+
 
     if shape == 'circle':
         control_curve = mc.circle(name=control_name,
@@ -87,8 +88,7 @@ def set_side_color(control_name, side):
     mc.setAttr('{}.overrideEnabled'.format(control_shape), 1)
     mc.setAttr('{}.overrideRGBColors'.format(control_shape), 1)
 
-    config_data = ingest_config()
-    side_color = config_data['Side Colors'][side]
+    side_color = get_curve_config()['Side Colors'][side]
 
     # unzip RGB tuple, side color dict, and apply color
     for channel, color in zip(RGB, side_color):
