@@ -112,7 +112,7 @@ QToolTip{
      <item>
       <layout class="QVBoxLayout" name="verticalLayout_2">
        <item>
-        <widget class="QPushButton" name="btnScreenhot">
+        <widget class="QPushButton" name="btnScreenshot">
          <property name="minimumSize">
           <size>
            <width>30</width>
@@ -213,7 +213,7 @@ QToolTip{
             <number>0</number>
            </property>
            <item>
-            <widget class="QPushButton" name="btnUp">
+            <widget class="QPushButton" name="btnVersionUp">
              <property name="minimumSize">
               <size>
                <width>18</width>
@@ -226,7 +226,7 @@ QToolTip{
             </widget>
            </item>
            <item>
-            <widget class="QPushButton" name="btnDown">
+            <widget class="QPushButton" name="btnVersionDown">
              <property name="minimumSize">
               <size>
                <width>18</width>
@@ -561,10 +561,10 @@ background-color: rgb(20, 94, 255);</string>
   <tabstop>btnHelp</tabstop>
   <tabstop>btnReport</tabstop>
   <tabstop>btnPreview</tabstop>
-  <tabstop>btnScreenhot</tabstop>
+  <tabstop>btnScreenshot</tabstop>
   <tabstop>btnViewport</tabstop>
-  <tabstop>btnUp</tabstop>
-  <tabstop>btnDown</tabstop>
+  <tabstop>btnVersionUp</tabstop>
+  <tabstop>btnVersionDown</tabstop>
   <tabstop>btnProject</tabstop>
   <tabstop>btnUser</tabstop>
   <tabstop>btnFolder</tabstop>
