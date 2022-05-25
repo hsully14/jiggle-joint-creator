@@ -73,11 +73,16 @@ class JiggleJointUI():
         
         self.wgCreator.cbxSide.addItems(side_options)
         self.wgCreator.cbxSide.currentIndexChanged.connect(self.on_side_type_change)
-        self.wgCreator.edtName.textChanged.connect(self.get_control_name)
+        self.wgCreator.edtName.textChanged.connect(self.get_base_control_name)
         self.wgCreator.edtName.setPlaceholderText('control name')
         self.wgCreator.cbxShape.addItems(shape_options)
         self.wgCreator.cbxShape.currentIndexChanged.connect(self.on_shape_type_change)
         self.wgCreator.sbxScale.valueChanged.connect(self.on_size_change)
+
+        self.side = self.wgCreator.cbxSide.currentText()
+        self.base_name = self.wgCreator.edtName.text()
+        self.shape = self.wgCreator.cbxShape.currentText()
+        self.size = self.wgCreator.sbxScale.value()
 
         # scene setup group
         self.wgCreator.btnDrivers.clicked.connect(self.press_drivers)
@@ -100,6 +105,7 @@ class JiggleJointUI():
     # ************************************************************************************
     def on_side_type_change(self):
         print('Side type changed to {}'.format(self.wgCreator.cbxSide.currentText()))
+        self.side = self.wgCreator.cbxSide.currentText()
 
         if self.wgCreator.cbxSide.currentText() == 'C':
             self.wgCreator.chxMirror.setEnabled(False)
@@ -110,9 +116,9 @@ class JiggleJointUI():
         if self.wgCreator.cbxSide.currentText() == 'R':
             self.wgCreator.chxMirror.setEnabled(True)
 
-    def get_control_name(self):
+    def get_base_control_name(self):
         print('Name changed to {}'.format(self.wgCreator.edtName.text()))
-        self.name = self.wgCreator.edtName.text()
+        self.base_name = self.wgCreator.edtName.text()
 
     def on_shape_type_change(self):
         print('Shape type changed to {}'.format(self.wgCreator.cbxShape.currentText()))
@@ -165,7 +171,7 @@ class JiggleJointUI():
 
     def press_build(self):
         print('Building setup')
-        ccu.make_control_shape(self.shape, self.name, self.size)
+        self.make_control_shape()
 
     def press_add_to_skc(self):
         print('Adding to skincluster press')
@@ -189,22 +195,22 @@ class JiggleJointUI():
         return config_data
 
 
-    def build_jiggle_setups(self, name, base_geometry, source_verts, side):
+    def build_jiggle_setups(self):
         '''feed info to jigglejoint class object and loop through selected verts'''
         #TODO: figure out when to rename base geometry; need to replace naming if done at front
         #geo_name = 'H_{}_{}_Jiggle_Proxy'.format(side, name)
         #base_geometry = mc.rename(base_geometry, geo_name)
         jiggle_setups = []
 
-        uv_pin = mu.create_uv_pin(name, side, base_geometry)
+        uv_pin = mu.create_uv_pin(self.base_name, self.side, self.base_geometry)
 
-        for index, source_vert in enumerate(source_verts):
+        for index, source_vert in enumerate(self.source_verts):
             # format index to 2 digit number and add 1 for nicer object naming
             naming_index = '{0:0=2d}'.format(index+1)
-            control_name = 'C_{}_{}_Jiggle_{}'.format(side, name, naming_index)
-            joint_name   = 'J_{}_{}_Jiggle_{}'.format(side, name, naming_index)
+            control_name = 'C_{}_{}_Jiggle_{}'.format(self.side, self.base_name, naming_index)
+            joint_name   = 'J_{}_{}_Jiggle_{}'.format(self.side, self.base_name, naming_index)
 
-            jiggle_joint = JiggleJoint(joint_name, control_name, source_vert, uv_pin, side, naming_index, base_geometry)
+            jiggle_joint = JiggleJoint(joint_name, control_name, source_vert, uv_pin, self.side, naming_index, self.base_geometry)
             jiggle_setups.append(jiggle_joint)
             
         return jiggle_setups
@@ -225,6 +231,57 @@ class JiggleJointUI():
             proxy_geo_group = mc.group(name='G_Jiggle_Proxy', empty=True)
         mc.parent(base_geometry, proxy_geo_group)
         mc.hide(base_geometry)
+
+    def make_control_shape(self, axis='y'):
+        """Creates NURBS curve shape for animateable control
+
+        Arguments:
+            shape (str): type of shape to create, from control curve config
+            control_name (str): name of controller
+            axis (str): primary aim axis
+            size (str): transform size
+
+        Returns:
+            control_curve (str): NURBS curve transform
+        """
+
+        orients = {'x': [1, 0, 0], 'y': [0, 1, 0], 'z': [0, 0, 1]}
+
+        # TODO: expose axis, name, and size to UI later on
+        # verify axis input and get orient values from aimAxis
+        curve_shape = self.get_curve_config()['Control Shapes'][self.shape]
+
+        if axis not in orients:
+            # TODO: change this to a logged error message
+            raise ValueError('Axis must be \'x\', \'y\', or \'z\'.')
+
+        orient = orients.get(axis)
+
+        if self.shape == 'circle':
+            self.control_curve = mc.circle(name=self.base_name,
+                                    normal=orient,
+                                    constructionHistory=False,
+                                    radius=(self.size * .5))[0]
+        else:
+            self.control_curve = mc.curve(name=self.control_name, degree=1, point=curve_shape)
+
+            mc.setAttr('{}.sx'.format(self.control_curve), self.size)
+            mc.setAttr('{}.sy'.format(self.control_curve), self.size)
+            mc.setAttr('{}.sz'.format(self.control_curve), self.size)
+
+            if orient[0]:
+                mc.setAttr('{}.rz'.format(self.control_curve), 90)
+            elif orient[2]:
+                mc.setAttr('{}.rx'.format(self.control_curve), 90)
+
+        # rename curve shape to match transform
+        control_curve_shape = mc.listRelatives(self.control_curve, shapes=True)
+        mc.rename(control_curve_shape, "{}Shape".format(self.control_name))
+
+        mc.makeIdentity(self.control_curve, apply=True)
+
+        return self.control_curve
+
 
 
     # def showEvent(self, e):
