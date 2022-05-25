@@ -1,8 +1,8 @@
 # Control curve creation utilities - shapes dictionary and helper functions
 import os
-import json
 
-# import maya.cmds as mc
+
+import maya.cmds as mc
 
 
 # ************************************************************************************
@@ -11,21 +11,10 @@ import json
 ORIENTS = {'x': [1, 0, 0], 'y': [0, 1, 0], 'z': [0, 0, 1]}
 RGB = ("R", "G", "B")
 
-FILEPATH = os.path.dirname(__file__)
-
 
 # ************************************************************************************
 # HELPER FUNCTIONS
 # ************************************************************************************
-def get_curve_config():
-    """Read .json file as Python object"""
-    config_file = FILEPATH + '/control_curve_config.json'
-
-    with open(config_file, 'r') as f:
-        config_data = json.loads(f.read())
-    return config_data
-
-
 def make_control_shape(shape, control_name='control', axis='y', size=1):
     """Creates NURBS curve shape for animateable control
 

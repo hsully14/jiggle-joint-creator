@@ -1,6 +1,6 @@
 # Control curve creation utilities - shapes dictionary and helper functions
 
-# import maya.cmds as mc
+import maya.cmds as mc
 # import pymel.core as pm
 # import maya.api.OpenMaya as om
 
@@ -130,6 +130,12 @@ def duplicate_selected_faces():
 
     # hide original object for visual clarity
     mc.hide(selected_object)
+
+    # go to vertex selection mode
+    clear_selection()
+    mc.select(duped_object)
+    mc.selectMode(component=True)
+    mc.selectType(vertex=True)
 
     return selected_object, duped_object
 

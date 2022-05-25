@@ -17,14 +17,14 @@
 #             -shelf usage is broken, but menu works
 #
 #--------------------------------------------------------------------------------#
-
+import os
+import sys
 import json
-import sys, os
 import webbrowser
 
 # TODO: clean up imports across files
-# import maya.cmds as mc
-# import maya.OpenMayaUI as omui
+import maya.cmds as mc
+import maya.OpenMayaUI as omui
 
 from shiboken2 import wrapInstance
 from Qt import QtWidgets, QtGui, QtCore, QtCompat
@@ -45,16 +45,17 @@ TITLE = os.path.splitext(os.path.basename(__file__))[0]
 # ************************************************************************************
 class JiggleJointUI():
     # TODO: add docstring
-    def __init__(self):
-        # BUILD local ui path
-        path_ui = CURRENT_PATH + '/' + TITLE + '.ui'
 
-        # LOAD ui with absolute path
+    def __init__(self):
+        # build local ui path and load ui
+        path_ui = CURRENT_PATH + '/' + TITLE + '.ui'
         self.wgCreator = QtCompat.loadUi(path_ui)
 
+        # init data
         self.config_data = self.get_curve_config()
         self.create_connections()
 
+        self.wgCreator.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
         self.wgCreator.show()
 
     def create_connections(self):
@@ -72,13 +73,11 @@ class JiggleJointUI():
         
         self.wgCreator.cbxSide.addItems(side_options)
         self.wgCreator.cbxSide.currentIndexChanged.connect(self.on_side_type_change)
-
         self.wgCreator.edtName.textChanged.connect(self.get_control_name)
-
+        self.wgCreator.edtName.setPlaceholderText('control name')
         self.wgCreator.cbxShape.addItems(shape_options)
         self.wgCreator.cbxShape.currentIndexChanged.connect(self.on_shape_type_change)
-
-        self.wgCreator.sbxSize.textChanged.connect(self.on_size_change)
+        self.wgCreator.sbxScale.valueChanged.connect(self.on_size_change)
 
         # scene setup group
         self.wgCreator.btnDrivers.clicked.connect(self.press_drivers)
@@ -89,7 +88,6 @@ class JiggleJointUI():
         # builder group
         self.wgCreator.chxAddToSkc.toggled.connect(self.check_add_to_skc)
         self.wgCreator.chxMirror.toggled.connect(self.check_mirror)
-
         self.wgCreator.btnBuild.clicked.connect(self.press_build)
         self.wgCreator.btnAddToSkc.clicked.connect(self.press_add_to_skc)
         self.wgCreator.btnMirror.clicked.connect(self.press_mirror)
@@ -97,12 +95,8 @@ class JiggleJointUI():
         # footer
         self.wgCreator.btnHelp.clicked.connect(self.press_help)
 
-        # setup display
-        self.wgCreator.edtName.setPlaceholderText('control name')
-
-
     # ************************************************************************************
-    # PRESS
+    # button press
     # ************************************************************************************
     def on_side_type_change(self):
         print('Side type changed to {}'.format(self.wgCreator.cbxSide.currentText()))
@@ -115,28 +109,53 @@ class JiggleJointUI():
             self.wgCreator.chxMirror.setEnabled(True)
         if self.wgCreator.cbxSide.currentText() == 'R':
             self.wgCreator.chxMirror.setEnabled(True)
-        
 
     def get_control_name(self):
         print('Name changed to {}'.format(self.wgCreator.edtName.text()))
+        self.name = self.wgCreator.edtName.text()
 
     def on_shape_type_change(self):
         print('Shape type changed to {}'.format(self.wgCreator.cbxShape.currentText()))
+        self.shape = self.wgCreator.cbxShape.currentText()
 
     def on_size_change(self):
-        print('Size changed to {}'.format(self.wgCreator.sbxSize.value()))
+        print('Size changed to {}'.format(self.wgCreator.sbxScale.value()))
+        self.size = self.wgCreator.sbxScale.value()
 
     def press_drivers(self):
+        # TODO: try/except error logging for not grabbing faces, not skinned mesh
         print('Driver faces grabbed')
+        geos = mu.duplicate_selected_faces()
+
+        self.skinned_geometry = geos[0]
+        self.base_geometry = geos[1]
+
+        print(self.skinned_geometry)
+        print(self.base_geometry)
 
     def press_verts(self):
+        # TODO: try/except error logging for not grabbing verts, not on driver geo
         print('Driver verts grabbed')
+        self.source_verts = mu.get_selected_verts()
+        print(self.selected_verts)
 
     def press_parent_jnt(self):
+        # TODO: better error handling
         print('Parent joint grabbed')
+        self.parent_jnt = mc.ls(sl=True)
+        print(self.parent_jnt)
+
+        if len(self.parent_jnt) > 1:
+            print('too many joints selected!')
 
     def press_parent_grp(self):
+        # TODO: better error handling
         print('Parent group grabbed')
+        self.parent_grp = mc.ls(sl=True)
+        print(self.parent_grp)
+
+        if len(self.parent_grp) > 1:
+            print('too many groups selected!')
 
     def check_add_to_skc(self):
         print('Adding to skincluster check')
@@ -145,7 +164,8 @@ class JiggleJointUI():
         print('Mirroring setup check')
 
     def press_build(self):
-        print('Building setup')     
+        print('Building setup')
+        ccu.make_control_shape(self.shape, self.name, self.size)
 
     def press_add_to_skc(self):
         print('Adding to skincluster press')
@@ -169,7 +189,54 @@ class JiggleJointUI():
         return config_data
 
 
+    def build_jiggle_setups(self, name, base_geometry, source_verts, side):
+        '''feed info to jigglejoint class object and loop through selected verts'''
+        #TODO: figure out when to rename base geometry; need to replace naming if done at front
+        #geo_name = 'H_{}_{}_Jiggle_Proxy'.format(side, name)
+        #base_geometry = mc.rename(base_geometry, geo_name)
+        jiggle_setups = []
 
+        uv_pin = mu.create_uv_pin(name, side, base_geometry)
+
+        for index, source_vert in enumerate(source_verts):
+            # format index to 2 digit number and add 1 for nicer object naming
+            naming_index = '{0:0=2d}'.format(index+1)
+            control_name = 'C_{}_{}_Jiggle_{}'.format(side, name, naming_index)
+            joint_name   = 'J_{}_{}_Jiggle_{}'.format(side, name, naming_index)
+
+            jiggle_joint = JiggleJoint(joint_name, control_name, source_vert, uv_pin, side, naming_index, base_geometry)
+            jiggle_setups.append(jiggle_joint)
+            
+        return jiggle_setups
+
+
+    def connect_to_hierarchy(self, jiggle_setups, parent_group, parent_joint, base_geometry):
+        '''attach created jigglejoint objects to hierarchy'''
+        # TODO: evaluate this on more complex setup
+
+        # controller, joint
+        for jiggle_joint in jiggle_setups:
+            mc.parent(jiggle_joint.joint, parent_joint)
+            mc.connectAttr('{}.worldInverseMatrix[0]'.format(parent_joint), '{}.matrixIn[1]'.format(jiggle_joint.joint_mult_node))
+            mc.parent(jiggle_joint.control_name, parent_group)
+
+        # driver geo
+        if not mc.objExists('G_Jiggle_Proxy'):
+            proxy_geo_group = mc.group(name='G_Jiggle_Proxy', empty=True)
+        mc.parent(base_geometry, proxy_geo_group)
+        mc.hide(base_geometry)
+
+
+    # def showEvent(self, e):
+    #     super(JiggleJointUI, self).showEvent(e)
+
+    #     if self.geometry:
+    #         self.restoreGeometry(self.geometry)
+
+    # def closeEvent(self, e):
+    #     if isinstance(self, JiggleJointUI):
+    #         super(JiggleJointUI, self).closeEvent(e)
+    #         self.geometry = self.saveGeometry()
 
 
 
@@ -343,15 +410,15 @@ def jiggle_joint_ui():
 # ************************************************************************************
 # UI HELPERS
 # ************************************************************************************
-def maya_main_window():
-	"""
-	Return the Maya main window widget as a Python object
-	"""
-	main_window_ptr = omui.MQtUtil.mainWindow()
-	if sys.version_info.major >= 3:
-		return wrapInstance(int(main_window_ptr), QtWidgets.QWidget)
-	else:
-		return wrapInstance(long(main_window_ptr), QtWidgets.QWidget)
+# def maya_main_window():
+# 	"""
+# 	Return the Maya main window widget as a Python object
+# 	"""
+# 	main_window_ptr = omui.MQtUtil.mainWindow()
+# 	if sys.version_info.major >= 3:
+# 		return wrapInstance(int(main_window_ptr), QtWidgets.QWidget)
+# 	else:
+# 		return wrapInstance(long(main_window_ptr), QtWidgets.QWidget)
 
 
 def confirm_creation_popup():
@@ -469,42 +536,7 @@ class JiggleJoint():
 # ************************************************************************************
 # JOINT CREATION HELPERS
 # ************************************************************************************
-def build_jiggle_setups(name, base_geometry, source_verts, side):
-    '''feed info to jigglejoint class object and loop through selected verts'''
-    #TODO: figure out when to rename base geometry; need to replace naming if done at front
-    #geo_name = 'H_{}_{}_Jiggle_Proxy'.format(side, name)
-    #base_geometry = mc.rename(base_geometry, geo_name)
-    jiggle_setups = []
 
-    uv_pin = mu.create_uv_pin(name, side, base_geometry)
-
-    for index, source_vert in enumerate(source_verts):
-        # format index to 2 digit number and add 1 for nicer object naming
-        naming_index = '{0:0=2d}'.format(index+1)
-        control_name = 'C_{}_{}_Jiggle_{}'.format(side, name, naming_index)
-        joint_name   = 'J_{}_{}_Jiggle_{}'.format(side, name, naming_index)
-
-        jiggle_joint = JiggleJoint(joint_name, control_name, source_vert, uv_pin, side, naming_index, base_geometry)
-        jiggle_setups.append(jiggle_joint)
-        
-    return jiggle_setups
-
-
-def connect_to_hierarchy(jiggle_setups, parent_group, parent_joint, base_geometry):
-    '''attach created jigglejoint objects to hierarchy'''
-    # TODO: evaluate this on more complex setup
-
-    # controller, joint
-    for jiggle_joint in jiggle_setups:
-        mc.parent(jiggle_joint.joint, parent_joint)
-        mc.connectAttr('{}.worldInverseMatrix[0]'.format(parent_joint), '{}.matrixIn[1]'.format(jiggle_joint.joint_mult_node))
-        mc.parent(jiggle_joint.control_name, parent_group)
-
-    # driver geo
-    if not mc.objExists('G_Jiggle_Proxy'):
-        proxy_geo_group = mc.group(name='G_Jiggle_Proxy', empty=True)
-    mc.parent(base_geometry, proxy_geo_group)
-    mc.hide(base_geometry)
 
 
 
