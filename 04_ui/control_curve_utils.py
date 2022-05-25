@@ -2,7 +2,7 @@
 import os
 import json
 
-import maya.cmds as mc
+# import maya.cmds as mc
 
 
 # ************************************************************************************

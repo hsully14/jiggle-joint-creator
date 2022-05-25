@@ -18,13 +18,16 @@
 #
 #--------------------------------------------------------------------------------#
 
+import json
 import sys, os
+import webbrowser
 
-import maya.cmds as mc
-import maya.OpenMayaUI as omui
+# TODO: clean up imports across files
+# import maya.cmds as mc
+# import maya.OpenMayaUI as omui
 
-from PySide2 import QtCore, QtWidgets, QtUiTools, QtGui
 from shiboken2 import wrapInstance
+from Qt import QtWidgets, QtGui, QtCore, QtCompat
 
 import mesh_utils as mu
 import control_curve_utils as ccu
@@ -33,8 +36,151 @@ import control_curve_utils as ccu
 # ************************************************************************************
 # VARIABLES
 # ************************************************************************************
-FILEPATH = os.path.dirname(__file__)
-IMG_PATH = FILEPATH + "/img/"
+CURRENT_PATH = os.path.dirname(__file__)
+IMG_PATH = CURRENT_PATH + '/img/{}.png'
+TITLE = os.path.splitext(os.path.basename(__file__))[0]
+
+# ************************************************************************************
+# UI CLASS
+# ************************************************************************************
+class JiggleJointUI():
+    # TODO: add docstring
+    def __init__(self):
+        # BUILD local ui path
+        path_ui = CURRENT_PATH + '/' + TITLE + '.ui'
+
+        # LOAD ui with absolute path
+        self.wgCreator = QtCompat.loadUi(path_ui)
+
+        self.config_data = self.get_curve_config()
+        self.create_connections()
+
+        self.wgCreator.show()
+
+    def create_connections(self):
+        # connect icons
+        self.wgCreator.btnHelp.setIcon(QtGui.QIcon(QtGui.QPixmap(IMG_PATH.format("btn_help"))))
+        
+        # controller setup group
+        side_options = []
+        for color in self.config_data["Side Colors"]:
+            side_options.append(color)
+
+        shape_options = []
+        for shape in self.config_data["Control Shapes"]:
+            shape_options.append(shape)
+        
+        self.wgCreator.cbxSide.addItems(side_options)
+        self.wgCreator.cbxSide.currentIndexChanged.connect(self.on_side_type_change)
+
+        self.wgCreator.edtName.textChanged.connect(self.get_control_name)
+
+        self.wgCreator.cbxShape.addItems(shape_options)
+        self.wgCreator.cbxShape.currentIndexChanged.connect(self.on_shape_type_change)
+
+        self.wgCreator.sbxSize.textChanged.connect(self.on_size_change)
+
+        # scene setup group
+        self.wgCreator.btnDrivers.clicked.connect(self.press_drivers)
+        self.wgCreator.btnVerts.clicked.connect(self.press_verts)
+        self.wgCreator.btnParentJnt.clicked.connect(self.press_parent_jnt)
+        self.wgCreator.btnParentGrp.clicked.connect(self.press_parent_grp)
+
+        # builder group
+        self.wgCreator.chxAddToSkc.toggled.connect(self.check_add_to_skc)
+        self.wgCreator.chxMirror.toggled.connect(self.check_mirror)
+
+        self.wgCreator.btnBuild.clicked.connect(self.press_build)
+        self.wgCreator.btnAddToSkc.clicked.connect(self.press_add_to_skc)
+        self.wgCreator.btnMirror.clicked.connect(self.press_mirror)
+
+        # footer
+        self.wgCreator.btnHelp.clicked.connect(self.press_help)
+
+        # setup display
+        self.wgCreator.edtName.setPlaceholderText('control name')
+
+
+    # ************************************************************************************
+    # PRESS
+    # ************************************************************************************
+    def on_side_type_change(self):
+        print('Side type changed to {}'.format(self.wgCreator.cbxSide.currentText()))
+
+        if self.wgCreator.cbxSide.currentText() == 'C':
+            self.wgCreator.chxMirror.setEnabled(False)
+        if self.wgCreator.cbxSide.currentText() == '-':
+            self.wgCreator.chxMirror.setEnabled(False)
+        if self.wgCreator.cbxSide.currentText() == 'L':
+            self.wgCreator.chxMirror.setEnabled(True)
+        if self.wgCreator.cbxSide.currentText() == 'R':
+            self.wgCreator.chxMirror.setEnabled(True)
+        
+
+    def get_control_name(self):
+        print('Name changed to {}'.format(self.wgCreator.edtName.text()))
+
+    def on_shape_type_change(self):
+        print('Shape type changed to {}'.format(self.wgCreator.cbxShape.currentText()))
+
+    def on_size_change(self):
+        print('Size changed to {}'.format(self.wgCreator.sbxSize.value()))
+
+    def press_drivers(self):
+        print('Driver faces grabbed')
+
+    def press_verts(self):
+        print('Driver verts grabbed')
+
+    def press_parent_jnt(self):
+        print('Parent joint grabbed')
+
+    def press_parent_grp(self):
+        print('Parent group grabbed')
+
+    def check_add_to_skc(self):
+        print('Adding to skincluster check')
+
+    def check_mirror(self):
+        print('Mirroring setup check')
+
+    def press_build(self):
+        print('Building setup')     
+
+    def press_add_to_skc(self):
+        print('Adding to skincluster press')
+
+    def press_mirror(self):
+        print('Mirroring setup press') 
+
+    def press_help(self):
+        webbrowser.open("https://github.com/hsully14/jiggle-joint-creator")
+
+    # ************************************************************************************
+    # functions
+    # ************************************************************************************
+
+    def get_curve_config(self):
+        """Read .json file as Python object"""
+        config_file = CURRENT_PATH + '/control_curve_config.json'
+
+        with open(config_file, 'r') as f:
+            config_data = json.loads(f.read())
+        return config_data
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # ************************************************************************************
@@ -427,6 +573,12 @@ def connect_to_hierarchy(jiggle_setups, parent_group, parent_joint, base_geometr
 
 
 
+#*******************************************************************
+# START
+if __name__ == "__main__":
+    app = QtWidgets.QApplication(sys.argv)
+    classVar = JiggleJointUI()
+    app.exec_()
 
 
 
