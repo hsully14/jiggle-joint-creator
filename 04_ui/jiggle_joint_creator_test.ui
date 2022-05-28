@@ -7,13 +7,13 @@
     <x>0</x>
     <y>0</y>
     <width>400</width>
-    <height>430</height>
+    <height>510</height>
    </rect>
   </property>
   <property name="minimumSize">
    <size>
     <width>400</width>
-    <height>430</height>
+    <height>510</height>
    </size>
   </property>
   <property name="font">
@@ -640,7 +640,7 @@ background-color:#a9b7c6;</string>
         </font>
        </property>
        <property name="toolTip">
-        <string>Select faces on skinned geometry to duplicate for driver geo</string>
+        <string>Select faces on skinned geometry to use as driver geo</string>
        </property>
        <property name="text">
         <string>Select Driver Faces</string>
@@ -661,7 +661,7 @@ background-color:#a9b7c6;</string>
         </font>
        </property>
        <property name="toolTip">
-        <string>Select verts on driver geo where jiggle joints should go</string>
+        <string>Select verts on driver geo to use as jiggle placements</string>
        </property>
        <property name="text">
         <string>Select Verts</string>
@@ -746,13 +746,47 @@ background-color:#a9b7c6;</string>
     </layout>
    </item>
    <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_3">
+     <item>
+      <widget class="QCheckBox" name="chxAddToSkc">
+       <property name="font">
+        <font>
+         <pointsize>9</pointsize>
+        </font>
+       </property>
+       <property name="toolTip">
+        <string>Adds new jiggle joints to skinned geo skincluster</string>
+       </property>
+       <property name="text">
+        <string>Add Joints to SkinCluster?</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QCheckBox" name="chxMirror">
+       <property name="font">
+        <font>
+         <pointsize>9</pointsize>
+        </font>
+       </property>
+       <property name="toolTip">
+        <string>Mirrors jiggle setup across X axis</string>
+       </property>
+       <property name="text">
+        <string>Mirror Jiggle Setup?</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
     <layout class="QVBoxLayout" name="verticalLayout_3">
      <item>
       <widget class="QPushButton" name="btnBuild">
        <property name="minimumSize">
         <size>
          <width>30</width>
-         <height>40</height>
+         <height>30</height>
         </size>
        </property>
        <property name="font">
@@ -764,6 +798,24 @@ background-color:#a9b7c6;</string>
        </property>
        <property name="text">
         <string>Build</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btnMirror">
+       <property name="minimumSize">
+        <size>
+         <width>30</width>
+         <height>30</height>
+        </size>
+       </property>
+       <property name="font">
+        <font>
+         <pointsize>9</pointsize>
+        </font>
+       </property>
+       <property name="text">
+        <string>Mirror Jiggle Setup</string>
        </property>
       </widget>
      </item>
