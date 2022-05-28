@@ -1,14 +1,12 @@
 # Control curve creation utilities - shapes dictionary and helper functions
-
 import maya.cmds as mc
-# import pymel.core as pm
-# import maya.api.OpenMaya as om
+import control_curve_utils as ccu
 
 
 # ************************************************************************************
 # HELPER FUNCTIONS
 # ************************************************************************************
-def rename_skincluster(objects=[]):
+def rename_skincluster(object=[]):
     """Renames skinclusters based on object name. Helper function for copy_skin_cluster.
 
     Arguments:
@@ -19,70 +17,105 @@ def rename_skincluster(objects=[]):
     """
     # TODO: verify this refactor works as expected
 
-    if not objects:
-        objects = mc.ls(sl=True)
 
-    for object in objects:
-        inputs = mc.listHistory(object, interestLevel=1)
-        skin_cluster = mc.ls(inputs, type='skinCluster')
-        if skin_cluster:
-            new_skin_cluster = mc.rename(skin_cluster[0], 'skinCluster_{}'.format(object))
+    inputs = mc.listHistory(object, interestLevel=1)
+    skin_cluster = mc.ls(inputs, type='skinCluster')
+    if skin_cluster:
+        new_skin_cluster = mc.rename(skin_cluster[0], 'skinCluster_{}'.format(object))
     
     #TODO: eval this return
     return new_skin_cluster
 
 
-def copy_skin_cluster(skinned_mesh, target_meshes=[], rename=True):
-    """Copies skin cluster with identical influences from first selected object to all 
-    other selections.
+def copy_skincluster(skinned_mesh='', target_mesh='', rename=True):
+    max_influences = 0
+    maintain_max_influences = False
 
-    Args:
-        skinned_mesh (string): mesh to copy skinning from
-        target_meshes (list): list of meshes to copy skinning to
-        rename (bool): whether to rename the new skinclusters or take name from geo
+    skin = find_skincluster(skinned_mesh)
+    if not skin:
+        mc.error('No skinCluster found in source history.')
+        return
 
-    Returns:
-        new_skin_cluster_names (list): newly created skinclusters
-    """
-    # TODO: verify this refactor works as expected
-    maxInfluences = 0
-    maintainMaxInfluences = False
-    new_skin_cluster_names = []
-
-    skin_cluster = mc.ls(mc.listHistory(skinned_mesh), type='skinCluster')
-
-    if skin_cluster:
-        maintainMaxInfluences = mc.getAttr('{}.maintainMaxInfluences'.format(skin_cluster[0]))
-        maxInfluences = mc.getAttr('{}.maxInfluences'.format(skin_cluster[0]))
-
-    for mesh in target_meshes:
-        # remove existing skincluster
-        old_skin_cluster = mc.ls(mc.listHistory(skinned_mesh), type='skinCluster')
-        if old_skin_cluster:
-            mc.delete(old_skin_cluster)
-
-        joints = mc.skinCluster(skin_cluster[0], weightedInfluence=True, query=True)
-
-        new_skin_cluster = mc.skinCluster(joints, mesh, toSelectedBones=True)[0]
-
-        mc.setAttr('{}.maintainMaxInfluences'.format(new_skin_cluster), maintainMaxInfluences)
-        mc.setAttr('{}.maxInfluences'.format(new_skin_cluster), maxInfluences)
-
-        mc.copySkinWeights(sourceSkin=skin_cluster[0],
-                           destinationSkin=new_skin_cluster,
-                           notMirror=True,
-                           surfaceAssociation='closestPoint')
-
-        if rename:
-            new_skin_cluster_name = rename_skincluster(objects=[mesh])
-        else:
-            new_skin_cluster_name = new_skin_cluster
-        new_skin_cluster_names.append(new_skin_cluster_name)
-
-    return new_skin_cluster_names
+    maintain_max_influences = mc.getAttr(
+        '{}.maintainMaxInfluences'.format(skin))
+    max_influences = mc.getAttr('{}.maxInfluences'.format(skin))
+    new_skin_names = []
+    
+    old_skin = find_skincluster(target_mesh)
+    if old_skin:
+        mc.delete(old_skin)
+    joints = mc.skinCluster(skin, weightedInfluence=True, q=True)
+    new_skin = mc.skinCluster(joints, target_mesh, tsb=True)[0]
+    mc.setAttr('{}.maintainMaxInfluences'.format(new_skin),
+                    maintain_max_influences)
+    mc.setAttr('{}.maxInfluences'.format(new_skin), max_influences)
+    mc.copySkinWeights(ss=skin,
+                            ds=new_skin,
+                            nm=True,
+                            surfaceAssociation='closestPoint')
+    if rename:
+        new_skin_name = rename_skincluster(object=target_mesh)
+    else:
+        new_skin_name = new_skin
+    new_skin_names.append(new_skin_name)
+    # mc.select(objects)
+    return new_skin_names
 
 
-def add_joints_to_skincluster(skinned_mesh, joints=[]):
+def find_skincluster(skin_object):
+    skin_shape = None
+    skin_shape_with_path = None
+    hidden_shape = None
+    hidden_shape_with_path = None
+
+    control_point_test = mc.ls(skin_object, typ="controlPoint")
+    if len(control_point_test):
+        skin_shape = skin_object
+
+    else:
+        relatives = mc.listRelatives(skin_object)
+        if relatives is None:
+            return False
+        for relative in relatives:
+            control_point_test = mc.ls("{}|{}".format(skin_object, relative),
+                             typ="controlPoint")
+            if len(control_point_test) == 0:
+                continue
+
+            io = mc.getAttr("{}|{}.io".format(skin_object, relative))
+            if io:
+                continue
+
+            visible = mc.getAttr("{}|{}.v".format(skin_object, relative))
+            if not visible:
+                hidden_shape = relative
+                hidden_shape_with_path = "{}|{}".format(skin_object, relative)
+                continue
+
+            skin_shape = relative
+            skin_shape_with_path = "{}|{}".format(skin_object, relative)
+            break
+
+    if skin_shape:
+        if len(skin_shape) == 0:
+            if len(hidden_shape) == 0:
+                return None
+
+            else:
+                skin_shape = hidden_shape
+                skin_shape_with_path = hidden_shape_with_path
+
+    clusters = mc.ls(typ="skinCluster")
+    for cluster in clusters:
+        geometry = mc.skinCluster(cluster, q=True, g=True)
+        for geo in geometry:
+            if geo == skin_shape or geo == skin_shape_with_path:
+                return cluster
+
+    return None
+
+
+def add_joints_to_skincluster(skinned_mesh, joint=''):
     """Add given joints into given mesh skincluster with locked, zeroed weights
 
     Arguments:
@@ -92,8 +125,7 @@ def add_joints_to_skincluster(skinned_mesh, joints=[]):
     #get skin cluster from skinned mesh
     skin_cluster = mc.ls(mc.listHistory(skinned_mesh), type='skinCluster')
 
-    for joint in joints:
-        mc.skinCluster(skin_cluster, edit=True, lockWeights=True, weight=0, addInfluence=joint)
+    mc.skinCluster(skin_cluster, edit=True, lockWeights=True, weight=0, addInfluence=joint)
 
 
 def duplicate_selected_faces():
@@ -125,6 +157,10 @@ def duplicate_selected_faces():
     mc.delete(delete_faces)
 
     # freeze transforms and clear history on duplicate
+    ccu.lock_and_hide(duped_object,
+                      lock=False,
+                      hide=False,
+                      attrs=['tx','ty','tz','rx','ry','rz','sx','sy','sz'])
     mc.makeIdentity(duped_object, apply=True)
     mc.delete(duped_object, constructionHistory=True)
 
@@ -210,49 +246,3 @@ def create_uv_pin(name, side, base_geometry):
     mc.connectAttr('{}.worldMesh[0]'.format(base_geometry_shape), '{}.deformedGeometry'.format(uv_pin))
 
     return uv_pin
-
-
-
-# ************************************************************************************
-# FIXME: working to refactor this, keeping original here for safekeeping
-# ************************************************************************************
-# def copySkinCluster(source='', dest=[], rename=False):
-#     maxInfluences = 0
-#     maintainMaxInfluences = False
-#     if not source and not dest:
-#         objects = mc.ls(sl=True)
-#         if len(objects) < 2:
-#             return False
-#         else:
-#             source = objects[0]
-#             dest = objects[1:]
-#     sourceHistory = mc.listHistory(source, lv=1)
-#     sc = mc.ls(sourceHistory, typ='skinCluster')
-#     if sc:
-#         maintainMaxInfluences = mc.getAttr('{}.maintainMaxInfluences'.format(
-#             sc[0]))
-#         maxInfluences = mc.getAttr('{}.maxInfluences'.format(sc[0]))
-#     newSCNames = []
-#     for d in dest:
-#         destHistory = mc.listHistory(d, lv=1)
-#         oldSC = mc.ls(destHistory, typ='skinCluster')
-#         if oldSC:
-#             mc.delete(oldSC)
-#         jnts = mc.skinCluster(sc[0], weightedInfluence=True, q=True)
-#         newSC = mc.skinCluster(jnts, d, tsb=True)[0]
-#         mc.setAttr('{}.maintainMaxInfluences'.format(newSC),
-#                    maintainMaxInfluences)
-#         mc.setAttr('{}.maxInfluences'.format(newSC), maxInfluences)
-#         mc.copySkinWeights(ss=sc[0],
-#                            ds=newSC,
-#                            nm=True,
-#                            surfaceAssociation='closestPoint')
-#         if rename:
-#             pass
-#             newSCName = renameDeformers(objects=[d])
-#         else:
-#             newSCName = newSC
-#         newSCNames.append(newSCName)
-#     #mc.select(objects)
-#     return (newSCNames) 
-

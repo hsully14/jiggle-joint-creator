@@ -13,7 +13,7 @@
   <property name="minimumSize">
    <size>
     <width>400</width>
-    <height>430</height>
+    <height>400</height>
    </size>
   </property>
   <property name="font">
@@ -416,6 +416,9 @@ QSlider::sub-page:vertical {
 }</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_5">
+   <property name="spacing">
+    <number>5</number>
+   </property>
    <property name="leftMargin">
     <number>7</number>
    </property>
@@ -782,6 +785,30 @@ background-color:#a9b7c6;</string>
        </property>
        <property name="text">
         <string>Add Joints to SkinCluster</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QVBoxLayout" name="verticalLayout_8">
+     <property name="spacing">
+      <number>0</number>
+     </property>
+     <item>
+      <widget class="Line" name="line_4">
+       <property name="minimumSize">
+        <size>
+         <width>1</width>
+         <height>1</height>
+        </size>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">
+background-color: rgb(128, 139, 150);</string>
+       </property>
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
        </property>
       </widget>
      </item>

@@ -11,8 +11,6 @@ RGB = ("R", "G", "B")
 # ************************************************************************************
 # HELPER FUNCTIONS
 # ************************************************************************************
-
-
 def set_side_color(control_name, side_color):
     """Set control color based on given side of rig. References constants in file header.
 

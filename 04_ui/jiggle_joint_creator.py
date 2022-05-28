@@ -1,32 +1,11 @@
-#--------------------------------------------------------------------------------#
-#            
-#             this UI allows the user to create a UVPin-based jiggle/tweaker joint
-#             setup for secondary animation, and connects it into an existing hierarchy
-#             and skinned mesh based on user inputs. the script can be added 
-#             to a maya session via userSetup or by running the script in the 
-#             script editor
-#
-#--------------------------------------------------------------------------------#
-#            
-#             things that can be improved:
-#             -passing of data between functions is clunky
-#             -buttons to select objects vs. typing content in, and dropdowns to select side from existing list 
-#             -ability to create multiple joints at once, and mirror setup
-#             -ability to use selected verts instead of reference locator 
-#             -more user control on control shape choice and sizing
-#             -shelf usage is broken, but menu works
-#
-#--------------------------------------------------------------------------------#
+# primary jiggle joint creator file
 import os
 import sys
 import json
 import webbrowser
 
-# TODO: clean up imports across files
 import maya.cmds as mc
-import maya.OpenMayaUI as omui
 
-from shiboken2 import wrapInstance
 from collections import namedtuple
 from Qt import QtWidgets, QtGui, QtCore, QtCompat
 
@@ -41,7 +20,9 @@ CURRENT_PATH = os.path.dirname(__file__)
 IMG_PATH = CURRENT_PATH + '/img/{}.png'
 TITLE = os.path.splitext(os.path.basename(__file__))[0]
 
-
+# ************************************************************************************
+# HELPER FUNCTIONS
+# ************************************************************************************
 def get_curve_config():
     """Read .json file as Python object"""
     config_file = CURRENT_PATH + '/control_curve_config.json'
@@ -104,7 +85,6 @@ class JiggleJointUI():
         # builder group
         self.wgCreator.btnBuild.clicked.connect(self.press_build)
         self.wgCreator.btnAddToSkc.clicked.connect(self.press_add_to_skc)
-        # self.wgCreator.btnMirror.clicked.connect(self.press_mirror)
 
         # footer
         self.wgCreator.btnHelp.clicked.connect(self.press_help)
@@ -113,15 +93,7 @@ class JiggleJointUI():
     # button press
     # ************************************************************************************
     def on_side_type_change(self):
-        '''enable or disable mirroring ability by side'''
         self.side = self.wgCreator.cbxSide.currentText()
-
-        if self.wgCreator.cbxSide.currentText() == 'C':
-            self.wgCreator.chxMirror.setEnabled(False)
-        if self.wgCreator.cbxSide.currentText() == 'L':
-            self.wgCreator.chxMirror.setEnabled(True)
-        if self.wgCreator.cbxSide.currentText() == 'R':
-            self.wgCreator.chxMirror.setEnabled(True)
 
     def get_base_control_name(self):
         self.base_name = self.wgCreator.edtName.text()
@@ -147,6 +119,7 @@ class JiggleJointUI():
             geos = mu.duplicate_selected_faces()
             self.skinned_geometry = geos[0]
             self.base_geometry = geos[1]
+            print('selecting faces on {}'.format(self.skinned_geometry))
         else:
             print('please select faces only!')
 
@@ -163,9 +136,12 @@ class JiggleJointUI():
 
         if selected.verts and not selected.faces and not selected.edges:
             self.source_verts = mu.get_selected_verts()
+            print('selecting verts {} on {}'.format(self.source_verts, self.skinned_geometry))
         else:
             print('please select verts only!')
 
+        mc.selectMode(object=True)
+        mu.clear_selection()
 
     def press_parent_jnt(self):
         selected = mc.ls(sl=True, type='joint')
@@ -173,8 +149,9 @@ class JiggleJointUI():
         if len(selected) > 1 or not selected:
             print('please select one parent joint!')
             return
-        
+
         self.parent_jnt = selected[0]
+        print('selecting parent joint {}'.format(self.parent_jnt))
 
     def press_parent_grp(self):
         selected = mc.ls(sl=True, type='transform')
@@ -184,35 +161,43 @@ class JiggleJointUI():
             return
 
         self.parent_grp = selected[0]
+        print('selecting controller parent group {}'.format(self.parent_grp))
 
     def press_build(self):
-        print('Building setup')
+        if not self.base_name:
+            print('please input a control name!')
+            return
+        if not self.base_geometry:
+            print('please select driver faces!')
+            return
+        if not self.source_verts:
+            print('please select source verts!')
+            return
+        if not self.parent_jnt:
+            print('please select a parent joint!')
+            return
+        if not self.parent_jnt:
+            print('please select a parent group!')
+            return
+
+        print('Building jiggle joint setups')
         self.jiggle_setups = self.build_jiggle_setups()
         self.connect_to_hierarchy(self.jiggle_setups)
-        mu.copy_skin_cluster(self.skinned_geometry, self.base_geometry)
-
-        
+        mu.copy_skincluster(self.skinned_geometry, self.base_geometry)
 
     def press_add_to_skc(self):
-        print('Adding to skincluster press')
-
         for jiggle_setup in self.jiggle_setups:
             mu.add_joints_to_skincluster(self.skinned_geometry, jiggle_setup.joint_name)
-
-    # def press_mirror(self):
-    #     print('Mirroring setup press')
+            print('Adding joint {} to skincluster'.format(jiggle_setup.joint_name))
 
     def press_help(self):
         webbrowser.open("https://github.com/hsully14/jiggle-joint-creator")
 
     # ************************************************************************************
-    # functions
+    # BUILDER FUNCTIONS
     # ************************************************************************************
     def build_jiggle_setups(self):
-        '''feed info to jigglejoint class object and loop through selected verts'''
-        # TODO: figure out when to rename base geometry; need to replace naming if done at front
-        # geo_name = 'H_{}_{}_Jiggle_Proxy'.format(side, name)
-        # base_geometry = mc.rename(base_geometry, geo_name)
+        '''feed info to jigglejoint class object and loop through selected verts'''        
         jiggle_setups = []
 
         uv_pin = mu.create_uv_pin(self.base_name, self.side, self.base_geometry)
@@ -226,12 +211,15 @@ class JiggleJointUI():
             jiggle_joint = JiggleJoint(self.joint_name, self.control_name, source_vert, uv_pin, self.side, naming_index, self.base_geometry, self.shape, self.size)
             jiggle_setups.append(jiggle_joint)
 
+        geo_name = 'H_{}_{}_Jiggle_Proxy'.format(self.side, self.base_name)
+        self.base_geometry = mc.rename(self.base_geometry, geo_name)
+
+        mc.showHidden(self.skinned_geometry)
+
         return jiggle_setups
 
     def connect_to_hierarchy(self, jiggle_setups):
         '''attach created jigglejoint objects to hierarchy'''
-        # TODO: evaluate this on more complex setup
-
         # controller, joint
         for jiggle_joint in jiggle_setups:
             mc.parent(jiggle_joint.joint, self.parent_jnt)
@@ -248,20 +236,27 @@ class JiggleJointUI():
         mc.hide(self.base_geometry)
 
     def get_selected_components(self):
-
         selectiontype = namedtuple('selectiontype', 'faces verts edges')
         
-        sel = mc.ls(sl=True, type = 'float3') # this is obscure maya way to get only components
+        sel = mc.ls(sl=True, type='float3') # this is obscure maya way to get only components
         faces = mc.polyListComponentConversion(sel, ff=True, tf =True)
         verts = mc.polyListComponentConversion(sel, fv=True, tv =True)
         edges = mc.polyListComponentConversion(sel, fe=True, te =True)
         return selectiontype (faces, verts, edges)
 
+    def create(self):
+        app = QtWidgets.QApplication(sys.argv)
+        main_widget = JiggleJointUI()
+        sys.exit(app.exec_())
+
+    def start(self):
+        global main_widget
+        main_widget = JiggleJointUI()
+
 
 # ************************************************************************************
-# JIGGLE JOINT CLASS
+# JIGGLE JOINT OBJECT CLASS
 # ************************************************************************************
-# TODO: 4/26, implement mirroring. start work on UI to grab inputs.
 class JiggleJoint():
     '''A class improves this module by making a standard base for the jiggle joint setup. It 
     also allows for easier transference of data within the object, and easier data access on created
@@ -291,10 +286,9 @@ class JiggleJoint():
         print("Side: {}".format(self.side))
         print("Index: {}".format(self.index))
         print("Base geometry: {}".format(self.base_geometry))
-        
+
     def create_jiggle_joint(self):
         '''assemble jiggle joint setup. create controller, joint, and hook into uvpin node'''
-        # TODO: expose shape, axis, size, to UI
         controller = self.make_control_shape()
         side_color = get_curve_config()['Side Colors'][self.side]
         ccu.set_side_color(controller, side_color)
@@ -311,11 +305,10 @@ class JiggleJoint():
         mc.connectAttr('{}.coordinateU'.format(controller), '{}.coordinate[{}].coordinateU'.format(self.uv_pin, self.index))
         mc.connectAttr('{}.coordinateV'.format(controller), '{}.coordinate[{}].coordinateV'.format(self.uv_pin, self.index))
         mc.connectAttr('{}.outputMatrix[{}]'.format(self.uv_pin, self.index), '{}.offsetParentMatrix'.format(controller))
-        
+
         mu.clear_selection()
         self.joint = mc.joint(name=self.joint_name)
 
-        # TODO: create function to handle this matrix parenting?
         # create matrix nodes for controller to joint driving
         self.joint_decomp_node = mc.createNode('decomposeMatrix', n='{}_decomp'.format(self.joint_name))
         self.joint_mult_node = mc.createNode('multMatrix', n='{}_mult'.format(self.joint_name))
@@ -343,15 +336,13 @@ class JiggleJoint():
         orients = {'x': [1, 0, 0], 'y': [0, 1, 0], 'z': [0, 0, 1]}
         axis='x'
 
-        # TODO: expose axis, name, and size to UI later on
+        if axis not in orients:
+            raise ValueError('Axis must be \'x\', \'y\', or \'z\'.')
+        
+        orient = orients.get(axis)
+
         # verify axis input and get orient values from aimAxis
         curve_shape = get_curve_config()['Control Shapes'][self.shape]
-
-        if axis not in orients:
-            # TODO: change this to a logged error message
-            raise ValueError('Axis must be \'x\', \'y\', or \'z\'.')
-
-        orient = orients.get(axis)
 
         if self.shape == 'circle':
             self.control_curve = mc.circle(name=self.control_name,
@@ -380,17 +371,20 @@ class JiggleJoint():
 
 
 # ************************************************************************************
-# JOINT CREATION HELPERS
-# ************************************************************************************
-
-
-
-
-
-
-#*******************************************************************
 # START
+# ************************************************************************************
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     classVar = JiggleJointUI()
     app.exec_()
+
+
+def create():
+    app = QtWidgets.QApplication(sys.argv)
+    main_widget = JiggleJointUI()
+    sys.exit(app.exec_())
+
+
+def start():
+    global main_widget
+    main_widget = JiggleJointUI()
