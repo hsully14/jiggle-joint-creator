@@ -20,6 +20,7 @@ CURRENT_PATH = os.path.dirname(__file__)
 IMG_PATH = CURRENT_PATH + '/img/{}.png'
 TITLE = os.path.splitext(os.path.basename(__file__))[0]
 
+
 # ************************************************************************************
 # HELPER FUNCTIONS
 # ************************************************************************************
